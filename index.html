@@ -654,7 +654,8 @@ document.getElementById('btnDownload').onclick = () => {
     }]
   };
 
-  const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
+  //const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(keymapData)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
