@@ -411,32 +411,31 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         };*/
-        document.getElementById('btnDownload').onclick = () => {
-    // 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
+        
+document.getElementById('btnDownload').onclick = () => {
+    // 1. Sort steps berdasarkan urutan (1, 1b, 2, 2b...)
     detectedSteps.sort((a, b) => a.step - b.step);
 
     const actionList = detectedSteps.map((s, i) => {
-        // Cek apakah ini kartu pertama (bilangan bulat seperti 1, 2) 
-        // atau kartu pasangan/kedua (desimal seperti 1.5, 2.5)
-        const isFirstCard = Number.isInteger(s.step);
-        
-        // Formatting the name: if it's a pair (e.g. step 1.5), call it '1b', else '1'
-        const stepName = isFirstCard ? `${s.step}` : `${Math.floor(s.step)}b`;
+        // Tentukan Nama Step (1, 1b, 2, 2b)
+        const stepName = Number.isInteger(s.step) ? `${s.step}` : `${Math.floor(s.step)}b`;
 
-        // UPDATE LOGIKA WAKTU (DELAY):
-        // Jika ini kartu pertama, delay = 0 (agar langsung mengetuk pasangannya).
-        // Jika ini kartu kedua (b), delay = 112 (jeda sebelum pindah mencari pasangan berikutnya).
-        const delayValue = isFirstCard ? 0 : 112;
-
-        // Horizontal and Vertical Precision alignment logic
-        const precisionX = s.x;
-        const precisionY = s.y;
+        // LOGIKA WAKTU: 
+        // Jika index genap (0, 2, 4) -> Kartu Pertama (Delay 0)
+        // Jika index ganjil (1, 3, 5) -> Kartu Pasangan (Delay 120)
+        const delayValue = (i % 2 === 0) ? 0 : 120;
 
         return {
-            "data": `${precisionX},${precisionY}`,
+            "data": `${s.x},${s.y}`,
             "extras": [
-                {"data": stepName, "id": "extra_coordinate_description"},
-                {"data": delayValue, "id": "extra_delay_before_next_action"}
+                { 
+                    "id": "extra_coordinate_description", 
+                    "data": stepName 
+                },
+                { 
+                    "id": "extra_delay_before_next_action", 
+                    "data": Number(delayValue) // Memastikan tipe datanya adalah Angka (Integer)
+                }
             ],
             "flags": 0,
             "type": "TAP_COORDINATE",
@@ -444,10 +443,40 @@
         };
     });
 
-    // 2. The exact early JSON structure for compatibility
-    const keymap = {"app_version":63,"keymap_db_version":13,"fingerprint_map_list":[{"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":0,"enabled":true},{"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":1,"enabled":true},{"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":2,"enabled":true},{"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":3,"enabled":true}],"keymap_list":[{"actionList":actionList,"constraintList":[],"constraintMode":1,"flags":0,"id":27,"isEnabled":true,"trigger":{"extras":[],"flags":1,"keys":[{"clickType":0,"deviceId":"io.github.sds100.keymapper.THIS_DEVICE","flags":0,"keyCode":24,"uid":crypto.randomUUID()}],"mode":2},"uid":"f27ac54c-b236-43d0-b34b-81aac1a8634b"}]};
+    // 2. Struktur JSON Lengkap
+    const keymap = {
+        "app_version": 63,
+        "keymap_db_version": 13,
+        "fingerprint_map_list": [
+            {"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":0,"enabled":true},
+            {"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":1,"enabled":true},
+            {"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":2,"enabled":true},
+            {"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":3,"enabled":true}
+        ],
+        "keymap_list": [{
+            "actionList": actionList,
+            "constraintList": [],
+            "constraintMode": 1,
+            "flags": 0,
+            "id": 27,
+            "isEnabled": true,
+            "trigger": {
+                "extras": [],
+                "flags": 1,
+                "keys": [{
+                    "clickType": 2, // 2 = Double Click/Press
+                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
+                    "flags": 0,
+                    "keyCode": 24,
+                    "uid": crypto.randomUUID()
+                }],
+                "mode": 2
+            },
+            "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
+        }]
+    };
 
-    // Ditulis tanpa baris baru (\n) untuk minified JSON
+    // Download tanpa baris baru (JSON Padat/Minified)
     const blob = new Blob([JSON.stringify(keymap)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -459,7 +488,6 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 };
-
         // --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
         // Modern browsers require a user gesture (like a click) to download.
         // Since our btnDownload.onclick is a user gesture, it should work.
