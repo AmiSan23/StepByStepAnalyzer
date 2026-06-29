@@ -423,7 +423,7 @@ document.getElementById('btnDownload').onclick = () => {
         // LOGIKA WAKTU: 
         // Jika index genap (0, 2, 4) -> Kartu Pertama (Delay 0)
         // Jika index ganjil (1, 3, 5) -> Kartu Pasangan (Delay 120)
-        const delayValue = (i % 2 === 0) ? 0 : 120;
+        const delayValue = (i % 2 === 0) ? 1 : 120;
 
         return {
             "data": `${s.x},${s.y}`,
@@ -464,7 +464,7 @@ document.getElementById('btnDownload').onclick = () => {
                 "extras": [],
                 "flags": 1,
                 "keys": [{
-                    "clickType": 2, // 2 = Double Click/Press
+                    "clickType": 0, // 2 = Double Click/Press
                     "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
                     "flags": 0,
                     "keyCode": 24,
