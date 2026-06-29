@@ -367,7 +367,7 @@
             }
         }
 
-        document.getElementById('btnDownload').onclick = () => {
+        /*document.getElementById('btnDownload').onclick = () => {
             // 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
             // Assumes s.step is a number (1, 1.5, 2, 2.5) or you can map 1b to 1.5 for sorting
             detectedSteps.sort((a, b) => a.step - b.step);
@@ -400,8 +400,44 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        };
+        };*/
+document.getElementById('btnDownload').onclick = () => {
+    if (matches.length === 0) return alert("Belum ada pasangan yang ditemukan!");
 
+    const actionList = [];
+    let stepCount = 1;
+
+    matches.forEach((pair, matchIndex) => {
+        // Tambahkan parameter 'cardIndex' (0 untuk kartu pertama, 1 untuk kartu kedua)
+        pair.forEach((cellIdx, cardIndex) => {
+            const center = getCellCenter(cellIdx);
+            
+            // --- LOGIKA WAKTU (DELAY) BARU ---
+            // Jika kartu pertama (index 0), delay sangat singkat agar kartu kedua langsung tersentuh
+            // Jika kartu kedua (index 1), delay normal untuk menunggu animasi selesai
+            const delayTime = (cardIndex === 0) ? 10 : 250; 
+
+            actionList.push({
+                "data": `${center.x},${center.y}`,
+                "extras": [
+                    {
+                        "data": `Match ${matchIndex + 1} - Step ${stepCount}`,
+                        "id": "extra_coordinate_description"
+                    },
+                    {
+                        "data": delayTime, // Menggunakan variabel delayTime yang baru
+                        "id": "extra_delay_before_next_action"
+                    }
+                ],
+                "flags": 0,
+                "type": "TAP_COORDINATE",
+                "uid": crypto.randomUUID()
+            });
+            stepCount++;
+        });
+    });
+
+    // ... [Sisa kode penyusunan keymapData dan proses Download Blob tetap sama persis] ...
         // --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
         // Modern browsers require a user gesture (like a click) to download.
         // Since our btnDownload.onclick is a user gesture, it should work.
