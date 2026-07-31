@@ -27,16 +27,13 @@
    overflow-x: hidden;
   }
 
-  /* Layout Utama: 2 Kolom */
   .main-layout {
    display: grid;
    grid-template-columns: 1fr 400px;
    gap: 20px;
-   /* max-width: 1400px; */
    margin: 0 auto;
   }
 
-  /* --- BAGIAN A: WORKSPACE --- */
   .workspace-container {
    background: var(--panel-bg);
    padding: 15px;
@@ -51,10 +48,6 @@
    position: relative;
    border: 2px solid #555;
    background: #000;
-   /* overflow: auto; */
-   /* max-height: 80vh; Removed to allow full height scroll if needed */
-   /* min-height: 400px; */
-   /* Ensure minimum height */
    width: fit-content;
   }
 
@@ -63,7 +56,6 @@
    width: 100%;
   }
 
-  /* Selection Boxes */
   .box {
    position: absolute;
    box-sizing: border-box;
@@ -82,7 +74,6 @@
    background: rgba(0, 204, 255, 0.05);
   }
 
-  /* Resizer yang lebih besar agar mudah disentuh */
   .resizer {
    width: 30px;
    height: 30px;
@@ -106,14 +97,12 @@
    white-space: nowrap;
   }
 
-  /* --- SISI KANAN (B & C) --- */
   .side-panel {
    display: flex;
    flex-direction: column;
    gap: 20px;
   }
 
-  /* BAGIAN B: NUDGE ARROWS */
   .nudge-panel {
    background: var(--panel-bg);
    padding: 20px;
@@ -140,7 +129,6 @@
    background: #666;
   }
 
-  /* BAGIAN C: PREVIEW & RESULT */
   .preview-panel {
    background: var(--panel-bg);
    padding: 20px;
@@ -156,7 +144,6 @@
    margin-bottom: 15px;
   }
 
-  /* Style untuk Skor Akurasi Baru */
   .score-container {
    display: flex;
    justify-content: space-between;
@@ -202,7 +189,6 @@
    </div>
   </div>
  </div>
-
  
  <div class="main-container">
   <div class="control-panel">
@@ -236,8 +222,8 @@
     <button class="action-btn" onclick="syncBox('Y')">Snap Y-Next (Side Split)</button>
     <button class="action-btn" onclick="syncBox('X')">Snap X-Next (Bottom Split)</button>
 
-    <div style="texts-align: center; margin-top: 15px;">
-     <span style="font-size: 12px;">Micro Nudge Border 2:</span>
+    <div style="text-align: center; margin-top: 15px;">
+     <span style="font-size: 12px;">Micro Nudge Border 2 (1 Real Pixel):</span>
      <div class="d-pad">
       <div></div>
       <button onclick="nudge(0,-1)">▲</button><div></div>
@@ -279,22 +265,17 @@
   const resCanvas = document.getElementById('res-canvas');
   const accuracyScoreSpan = document.getElementById('accuracy-score');
 
-  // Canvas tersembunyi untuk menyimpan data gambar asli agar pembacaan pixel super cepat
   let sourceCanvas = document.createElement('canvas');
   let sourceCtx = null;
 
   let state = {
-   x1: 20,
-   y1: 20,
-   w: 200,
-   h: 200,
-   x2: 230,
-   y2: 20,
+   x1: 20, y1: 20,
+   w: 200, h: 200,
+   x2: 230, y2: 20,
    isDragging: false,
    isResizing: false,
    activeBox: null,
-   startX: 0,
-   startY: 0
+   startX: 0, startY: 0
   };
 
   // --- 1. UPLOAD IMAGE & CACHE DATA ---
@@ -304,17 +285,15 @@
     reader.onload = (ev) => {
      img.src = ev.target.result;
      img.onload = () => {
-      // 1. Siapkan Canvas Sumber (Cache)
-      sourceCanvas.width = img.width;
-      sourceCanvas.height = img.height;
-      sourceCtx = sourceCanvas.getContext('2d', {
-       willReadFrequently: true
-      });
+      // 1. Siapkan Canvas pada RESOLUSI ASLI (Natural Resolution)
+      sourceCanvas.width = img.naturalWidth;
+      sourceCanvas.height = img.naturalHeight;
+      sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
       sourceCtx.drawImage(img, 0, 0);
 
       // 2. Reset Posisi Box
-      state.w = Math.min(200, Math.floor(img.width/3));
-      state.h = Math.min(200, Math.floor(img.height/3));
+      state.w = Math.min(200, Math.floor(img.width / 3));
+      state.h = Math.min(200, Math.floor(img.height / 3));
       state.x1 = 20; state.y1 = 20;
       state.x2 = state.x1 + state.w + 20; state.y2 = 20;
 
@@ -332,32 +311,30 @@
   function syncBox(mode) {
    if (mode === 'Y') {
     state.y2 = state.y1;
-    state.x2 = state.x1 + state.w; // Reset ke posisi menempel di kanan
+    state.x2 = state.x1 + state.w;
    } else if (mode === 'X') {
     state.x2 = state.x1;
-    state.y2 = state.y1 + state.h; // Reset ke posisi menempel di bawah
+    state.y2 = state.y1 + state.h;
    }
    updateVisuals();
   }
 
   function nudge(dx, dy) {
-   state.x2 += dx; state.y2 += dy;
-   // Menggunakan requestAnimationFrame agar UI update lebih mulus
+   // Kalkulasi mundur agar Nudge bergerak tepat 1 piksel di resolusi asli gambar
+   const scaleX = img.naturalWidth / img.width;
+   const scaleY = img.naturalHeight / img.height;
+   
+   state.x2 += (dx / scaleX);
+   state.y2 += (dy / scaleY);
    requestAnimationFrame(updateVisuals);
   }
 
   // --- 3. INPUT HANDLING ---
   function getClientPos(e) {
    if (e.touches && e.touches.length > 0) {
-    return {
-     x: e.touches[0].clientX,
-     y: e.touches[0].clientY
-    };
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
    }
-   return {
-    x: e.clientX,
-    y: e.clientY
-   };
+   return { x: e.clientX, y: e.clientY };
   }
 
   function handleStart(e) {
@@ -407,22 +384,15 @@
    state.activeBox = null;
   }
 
-  // Event Listeners
   window.addEventListener('mousedown', handleStart);
   window.addEventListener('mousemove', handleMove);
   window.addEventListener('mouseup', handleEnd);
-  window.addEventListener('touchstart', handleStart, {
-   passive: false
-  });
-  window.addEventListener('touchmove', handleMove, {
-   passive: false
-  });
+  window.addEventListener('touchstart', handleStart, { passive: false });
+  window.addEventListener('touchmove', handleMove, { passive: false });
   window.addEventListener('touchend', handleEnd);
-
 
   // --- 4. RENDER LOGIC (OPTIMIZED) ---
   function updateVisuals() {
-   // Update DOM
    box1.style.width = state.w + 'px';
    box1.style.height = state.h + 'px';
    box1.style.left = state.x1 + 'px';
@@ -439,50 +409,48 @@
   function drawPreview() {
    if (!img.src || !sourceCtx) return;
 
-   // Pembulatan koordinat agar pixel perfect dan valid
-   const rx1 = Math.round(state.x1);
-   const ry1 = Math.round(state.y1);
-   const rx2 = Math.round(state.x2);
-   const ry2 = Math.round(state.y2);
-   const rw = Math.round(state.w);
-   const rh = Math.round(state.h);
+   // Dapatkan rasio skala dari layar ke gambar asli
+   const scaleX = img.naturalWidth / img.width;
+   const scaleY = img.naturalHeight / img.height;
 
-   // A. Render Visual Overlay (Canvas Kecil)
-   prevCanvas.width = rw;
-   prevCanvas.height = rh;
+   // Konversi koordinat dari Box DOM ke koordinat resolusi asli
+   const nx1 = Math.round(state.x1 * scaleX);
+   const ny1 = Math.round(state.y1 * scaleY);
+   const nx2 = Math.round(state.x2 * scaleX);
+   const ny2 = Math.round(state.y2 * scaleY);
+   
+   // Pastikan lebar dan tinggi tidak kurang dari 1 piksel untuk mencegah error getImageData
+   const nw = Math.max(1, Math.round(state.w * scaleX));
+   const nh = Math.max(1, Math.round(state.h * scaleY));
+
+   // A. Render Visual Overlay (Canvas disetel ke ukuran yang dikalkulasi)
+   prevCanvas.width = nw;
+   prevCanvas.height = nh;
    const ctx = prevCanvas.getContext('2d');
 
-   // Ambil data langsung dari Cache (Sangat Cepat)
-   // Gunakan clamp agar tidak error jika keluar batas gambar
    try {
     // Draw Box 1
     ctx.globalAlpha = 1.0;
-    ctx.drawImage(sourceCanvas, rx1, ry1, rw, rh, 0, 0, rw, rh);
+    ctx.drawImage(sourceCanvas, nx1, ny1, nw, nh, 0, 0, nw, nh);
 
     // Draw Box 2 (Ghosting)
     ctx.globalAlpha = 0.5;
-    ctx.drawImage(sourceCanvas, rx2, ry2, rw, rh, 0, 0, rw, rh);
+    ctx.drawImage(sourceCanvas, nx2, ny2, nw, nh, 0, 0, nw, nh);
 
-    // B. Hitung Skor (Langsung dari sourceCtx)
-    const d1 = sourceCtx.getImageData(clamp(rx1, img.width), clamp(ry1, img.height), rw, rh).data;
-    const d2 = sourceCtx.getImageData(clamp(rx2, img.width), clamp(ry2, img.height), rw, rh).data;
+    // B. Hitung Skor
+    const d1 = sourceCtx.getImageData(clamp(nx1, img.naturalWidth), clamp(ny1, img.naturalHeight), nw, nh).data;
+    const d2 = sourceCtx.getImageData(clamp(nx2, img.naturalWidth), clamp(ny2, img.naturalHeight), nw, nh).data;
 
     let totalDiff = 0;
-    // Sampling optimasi: hitung setiap pixel ke-4 untuk performa super tinggi jika area besar
-    // Tapi untuk presisi kita hitung semua (loop step 4 untuk RGBA)
     for (let i = 0; i < d1.length; i += 4) {
-     totalDiff += Math.abs(d1[i] - d2[i]) + // R
-     Math.abs(d1[i+1] - d2[i+1]) + // G
-     Math.abs(d1[i+2] - d2[i+2]); // B
+     totalDiff += Math.abs(d1[i] - d2[i]) + Math.abs(d1[i+1] - d2[i+1]) + Math.abs(d1[i+2] - d2[i+2]); 
     }
 
-    const numPixels = rw * rh;
-    const score = numPixels > 0 ? totalDiff / (numPixels * 3): 999;
+    const numPixels = nw * nh;
+    const score = numPixels > 0 ? totalDiff / (numPixels * 3) : 999;
 
-    // Update Teks
-    accuracyScoreSpan.innerText = score.toFixed(3); // 3 digit desimal
+    accuracyScoreSpan.innerText = score.toFixed(3);
 
-    // Update Warna
     if (score < 1.0) accuracyScoreSpan.style.color = "var(--score-good)";
     else if (score < 10.0) accuracyScoreSpan.style.color = "var(--score-ok)";
     else accuracyScoreSpan.style.color = "var(--score-bad)";
@@ -493,7 +461,6 @@
    }
   }
 
-  // Helper untuk mencegah error getImageData di luar batas
   function clamp(val, max) {
    if (val < 0) return 0;
    if (val >= max) return max - 1;
@@ -503,23 +470,31 @@
   function processDiff() {
    if (!sourceCtx) return;
 
-   // Gunakan ukuran integer
-   const w = Math.round(state.w);
-   const h = Math.round(state.h);
+   const scaleX = img.naturalWidth / img.width;
+   const scaleY = img.naturalHeight / img.height;
 
-   resCanvas.width = w;
-   resCanvas.height = h;
+   const nx1 = Math.round(state.x1 * scaleX);
+   const ny1 = Math.round(state.y1 * scaleY);
+   const nx2 = Math.round(state.x2 * scaleX);
+   const ny2 = Math.round(state.y2 * scaleY);
+   
+   const nw = Math.max(1, Math.round(state.w * scaleX));
+   const nh = Math.max(1, Math.round(state.h * scaleY));
+
+   resCanvas.width = nw;
+   resCanvas.height = nh;
    const ctx = resCanvas.getContext('2d');
 
-   const d1 = sourceCtx.getImageData(Math.round(state.x1), Math.round(state.y1), w, h).data;
-   const d2 = sourceCtx.getImageData(Math.round(state.x2), Math.round(state.y2), w, h).data;
-   const out = ctx.createImageData(w, h);
+   const d1 = sourceCtx.getImageData(clamp(nx1, img.naturalWidth), clamp(ny1, img.naturalHeight), nw, nh).data;
+   const d2 = sourceCtx.getImageData(clamp(nx2, img.naturalWidth), clamp(ny2, img.naturalHeight), nw, nh).data;
+   const out = ctx.createImageData(nw, nh);
 
    for (let i = 0; i < d1.length; i += 4) {
     const diff = Math.abs(d1[i]-d2[i]) + Math.abs(d1[i+1]-d2[i+1]) + Math.abs(d1[i+2]-d2[i+2]);
-    if (diff > 45) {
-     out.data[i] = 255; out.data[i+1] = 0; out.data[i+2] = 0; out.data[i+3] = 255;
+    if (diff > 45) { // Threshold toleransi
+     out.data[i] = 255; out.data[i+1] = 0; out.data[i+2] = 0; out.data[i+3] = 255; // Red
     } else {
+     // Gambar asli
      out.data[i] = d1[i]; out.data[i+1] = d1[i+1]; out.data[i+2] = d1[i+2]; out.data[i+3] = 255;
     }
    }
