@@ -8,7 +8,7 @@
     <style>
         :root { --primary: #9b59b6; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 700px; width: 100%; box-sizing: border-box; }
+        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 800px; width: 100%; box-sizing: border-box; }
         
         .nav-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .nav-header h2 { margin: 0; color: #2c3e50; font-size: 1.1rem; line-height: 1.6;}
@@ -18,6 +18,7 @@
         .upload-section { display: flex; gap: 10px; margin-bottom: 15px; }
         .upload-box { flex: 1; border: 2px dashed #ccc; padding: 10px; text-align: center; border-radius: 8px; background: #fafafa; }
         .upload-box input { width: 100%; font-size: 0.75rem; }
+        .upload-box p { font-size: 0.7rem; color: #888; margin: 5px 0 0 0;}
         
         .preview-wrapper { display: flex; gap: 10px; margin-bottom: 15px; }
         .canvas-container { flex: 1; position: relative; border: 2px solid #333; border-radius: 4px; overflow: hidden; line-height: 0; background: #000; }
@@ -36,12 +37,22 @@
         .grid-settings { display: flex; gap: 10px; margin-bottom: 10px; }
         .grid-settings select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; outline: none; }
 
+        /* Thumbnails Preview */
+        .thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-bottom: 15px; background: #eee; padding: 10px; border-radius: 6px;}
+        .thumb-box { text-align: center; background: white; padding: 4px; border-radius: 4px; border: 1px solid #ccc;}
+        .thumb-box canvas { width: 100%; height: auto; border: 1px solid #ddd; background:#000;}
+        .thumb-box .lbl { font-size: 0.65rem; font-weight: bold; margin-top: 4px; color: #333;}
+        .thumb-box .lbl span { color: var(--danger); font-size: 0.8rem;}
+
+        /* Textarea Matrix */
+        #stateArea { width: 100%; height: 100px; font-family: monospace; font-size: 1rem; padding: 10px; border: 2px solid #ccc; border-radius: 6px; box-sizing: border-box; resize: vertical; text-align: center; letter-spacing: 2px;}
+
         .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
+        .btn-extract { background: #f39c12; }
         .btn-start { background: var(--primary); }
-        .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
-        .btn-download { background: var(--success); display: none; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
         
-        .log-box { background: #222; color: #0f0; padding: 10px; font-family: monospace; font-size: 0.8rem; height: 150px; overflow-y: auto; border-radius: 4px; display: none; }
+        .log-box { background: #222; color: #0f0; padding: 10px; font-family: monospace; font-size: 0.8rem; height: 150px; overflow-y: auto; border-radius: 4px; display: none; margin-top: 15px;}
         #status { text-align: center; font-size: 0.85rem; margin: 10px 0; color: #666; font-weight: bold;}
     </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
@@ -62,12 +73,14 @@
     <!-- Upload Gambar -->
     <div class="upload-section">
         <div class="upload-box">
-            <span class="slider-title">1. Gambar Target (Asli)</span>
+            <span class="slider-title">1. Target (Opsional)</span>
             <input type="file" id="refImage" accept="image/*">
+            <p>Abaikan jika isi manual</p>
         </div>
-        <div class="upload-box">
-            <span class="slider-title">2. Gambar Acak (Puzzle)</span>
+        <div class="upload-box" style="border-color: var(--primary);">
+            <span class="slider-title" style="color:var(--primary)">2. Acak (Wajib)</span>
             <input type="file" id="scrImage" accept="image/*">
+            <p>Untuk memetakan koordinat</p>
         </div>
     </div>
 
@@ -115,8 +128,20 @@
                 <span class="val-badge" id="v-s">5.0%</span>
             </div>
         </div>
+
+        <button id="btnExtract" class="btn btn-extract" disabled>TÁHAP 1: EKSTRAK POSISI & PREVIEW</button>
+    </div>
+
+    <!-- Panel Data Matrix (Hidden until extraction) -->
+    <div class="control-panel" id="matrixPanel" style="display:none; border-color: var(--primary);">
+        <span class="slider-title">Preview Potongan (Gambar Acak)</span>
+        <div id="thumbContainer" class="thumb-grid"></div>
+
+        <span class="slider-title">Matriks Posisi (Bisa Diedit Manual)</span>
+        <p style="font-size: 0.7rem; color: #666; margin-top:-5px;">Gunakan angka <b>0</b> hingga <b id="maxNum">X</b>. (Jika -1, berarti gambar tidak dikenali).</p>
+        <textarea id="stateArea" placeholder="Contoh:&#10;3, 6, 8&#10;1, 5, 7&#10;2, 4, 0"></textarea>
         
-        <div class="slider-section">
+        <div class="slider-section" style="margin-top: 15px;">
             <span class="slider-title">Output Resolusi Layar (KeyMapper)</span>
             <div style="display: flex; gap: 10px;">
                 <input type="number" id="screenWidth" value="1260" placeholder="Width" style="flex:1; padding: 8px;">
@@ -124,14 +149,12 @@
             </div>
         </div>
 
-        <button id="processBtn" class="btn btn-start" disabled>🔍 ANALISA & PECAHKAN</button>
-        <button id="btnDownload" class="btn btn-download" style="margin-top: 10px;">💾 DOWNLOAD JSON (SWIPE)</button>
+        <button id="btnSolve" class="btn btn-start">TÁHAP 2: HITUNG SWAP & DOWNLOAD JSON</button>
     </div>
 
     <div id="status">Menunggu OpenCV...</div>
     <div class="log-box" id="swapLogs"></div>
 </div>
-
 
 <script>
 let cvReady = false;
@@ -139,21 +162,21 @@ let refImgObj = new Image();
 let scrImgObj = new Image();
 let refLoaded = false;
 let scrLoaded = false;
-let generatedSwaps = []; // Menyimpan urutan swap yang dihasilkan
 
 const refCanvas = document.getElementById('refCanvas');
 const scrCanvas = document.getElementById('scrCanvas');
 const refCtx = refCanvas.getContext('2d', {willReadFrequently: true});
 const scrCtx = scrCanvas.getContext('2d', {willReadFrequently: true});
 const logs = document.getElementById('swapLogs');
+const thumbContainer = document.getElementById('thumbContainer');
 
 function onOpenCvReady() {
     cvReady = true;
-    document.getElementById('status').innerText = "OpenCV Siap. Upload kedua gambar.";
+    document.getElementById('status').innerText = "OpenCV Siap. Upload gambar (Gambar Acak Wajib).";
     checkReady();
 }
 
-// PERBAIKAN: Fungsi Muat Gambar 1 (Target/Asli)
+// Upload Gambar 1
 document.getElementById('refImage').addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
         refImgObj.onload = () => {
@@ -167,7 +190,7 @@ document.getElementById('refImage').addEventListener('change', (e) => {
     }
 });
 
-// PERBAIKAN: Fungsi Muat Gambar 2 (Acak)
+// Upload Gambar 2
 document.getElementById('scrImage').addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
         scrImgObj.onload = () => {
@@ -182,13 +205,14 @@ document.getElementById('scrImage').addEventListener('change', (e) => {
 });
 
 function checkReady() {
-    if (refLoaded && scrLoaded && cvReady) {
-        document.getElementById('processBtn').disabled = false;
-        document.getElementById('status').innerText = "Siap untuk memecahkan puzzle!";
+    // Tombol Ekstrak aktif jika minimal Gambar Acak & OpenCV siap
+    if (scrLoaded && cvReady) {
+        document.getElementById('btnExtract').disabled = false;
+        document.getElementById('status').innerText = refLoaded ? "Siap diekstrak (Auto-Match Aktif)" : "Siap diekstrak (Mode Manual, Target tidak ada)";
     }
 }
 
-// Sinkronisasi Slider Margin
+// Slider Margin
 ['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
     document.getElementById(id).addEventListener('input', (e) => {
         const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
@@ -199,7 +223,6 @@ function checkReady() {
 document.getElementById('gridCols').addEventListener('change', drawOverlays);
 document.getElementById('gridRows').addEventListener('change', drawOverlays);
 
-// Menghitung Grid berdasarkan margin
 function getGridCells(width, height) {
     const t = parseFloat(document.getElementById('marginTop').value) / 100;
     const b = parseFloat(document.getElementById('marginBottom').value) / 100;
@@ -231,7 +254,6 @@ function getGridCells(width, height) {
     return cells;
 }
 
-// Gambar Grid Overlay
 function drawOverlays() {
     if (refLoaded) _drawOnCanvas(refCanvas, refCtx, refImgObj, "rgba(0, 255, 0, 0.5)");
     if (scrLoaded) _drawOnCanvas(scrCanvas, scrCtx, scrImgObj, "rgba(255, 0, 0, 0.5)");
@@ -241,7 +263,6 @@ function _drawOnCanvas(canvas, ctx, img, color) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
     const cells = getGridCells(canvas.width, canvas.height);
-    
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, canvas.width / 200);
     cells.forEach(c => {
@@ -252,151 +273,168 @@ function _drawOnCanvas(canvas, ctx, img, color) {
 }
 
 // ==========================================
-// ALGORITMA PENYELESAIAN (CORE LOGIC)
+// TAHAP 1: EKSTRAKSI & PREVIEW THUMBNAIL
 // ==========================================
-document.getElementById('processBtn').onclick = () => {
-    document.getElementById('status').innerText = "Sedang mencocokkan gambar... Mohon tunggu.";
-    document.getElementById('processBtn').disabled = true;
-    logs.innerHTML = ''; 
-    logs.style.display = 'block';
+document.getElementById('btnExtract').onclick = () => {
+    document.getElementById('status').innerText = "Mengekstrak gambar...";
+    const cells = getGridCells(scrCanvas.width, scrCanvas.height);
+    const cols = parseInt(document.getElementById('gridCols').value);
+    const rows = parseInt(document.getElementById('gridRows').value);
     
-    setTimeout(() => {
-        try {
-            const cells = getGridCells(refCanvas.width, refCanvas.height);
-            let refMats = [], scrMats = [];
-            
-            let refSrc = cv.imread(refCanvas);
-            let scrSrc = cv.imread(scrCanvas);
-            let refGray = new cv.Mat(), scrGray = new cv.Mat();
-            cv.cvtColor(refSrc, refGray, cv.COLOR_RGBA2GRAY);
-            cv.cvtColor(scrSrc, scrGray, cv.COLOR_RGBA2GRAY);
+    document.getElementById('maxNum').innerText = (cells.length - 1);
+    
+    let currentState = new Array(cells.length).fill(-1); // Default -1 (Tidak dikenali)
 
-            // Ekstrak & Resize 50x50 piksel
-            cells.forEach(c => {
-                const innerX = c.x + c.w * 0.2;
-                const innerY = c.y + c.h * 0.2;
-                const innerW = c.w * 0.6;
-                const innerH = c.h * 0.6;
-                let rect = new cv.Rect(innerX, innerY, innerW, innerH);
-                
-                let rRoi = refGray.roi(rect);
-                let sRoi = scrGray.roi(rect);
-                
-                let rResized = new cv.Mat();
-                let sResized = new cv.Mat();
-                
-                cv.resize(rRoi, rResized, new cv.Size(50, 50));
-                cv.resize(sRoi, sResized, new cv.Size(50, 50));
+    // Jika Target Gambar 1 ada, lakukan OpenCV Matching
+    if (refLoaded) {
+        let refSrc = cv.imread(refCanvas);
+        let scrSrc = cv.imread(scrCanvas);
+        let refGray = new cv.Mat(), scrGray = new cv.Mat();
+        cv.cvtColor(refSrc, refGray, cv.COLOR_RGBA2GRAY);
+        cv.cvtColor(scrSrc, scrGray, cv.COLOR_RGBA2GRAY);
 
-                refMats.push(rResized);
-                scrMats.push(sResized);
-                
-                rRoi.delete(); sRoi.delete();
-            });
+        let refMats = [], scrMats = [];
+        cells.forEach(c => {
+            let rect = new cv.Rect(c.x + c.w * 0.2, c.y + c.h * 0.2, c.w * 0.6, c.h * 0.6);
+            let rRoi = refGray.roi(rect);
+            let sRoi = scrGray.roi(rect);
+            let rResized = new cv.Mat(); let sResized = new cv.Mat();
+            cv.resize(rRoi, rResized, new cv.Size(50, 50));
+            cv.resize(sRoi, sResized, new cv.Size(50, 50));
+            refMats.push(rResized); scrMats.push(sResized);
+            rRoi.delete(); sRoi.delete();
+        });
 
-            // --- PERBAIKAN: MATRIKS PENCOCOKAN UNIK (1-TO-1 MAPPING) ---
-            let scores = [];
-            for (let s = 0; s < scrMats.length; s++) {
-                for (let r = 0; r < refMats.length; r++) {
-                    let diff = new cv.Mat();
-                    cv.absdiff(scrMats[s], refMats[r], diff);
-                    cv.threshold(diff, diff, 35, 255, cv.THRESH_BINARY);
-                    let score = cv.countNonZero(diff); 
-                    diff.delete();
-                    
-                    scores.push({ scrIdx: s, refIdx: r, diff: score });
-                }
+        let scores = [];
+        for (let s = 0; s < scrMats.length; s++) {
+            for (let r = 0; r < refMats.length; r++) {
+                let diff = new cv.Mat();
+                cv.absdiff(scrMats[s], refMats[r], diff);
+                cv.threshold(diff, diff, 35, 255, cv.THRESH_BINARY);
+                scores.push({ scrIdx: s, refIdx: r, diff: cv.countNonZero(diff) });
+                diff.delete();
             }
-
-            // Urutkan dari tingkat kemiripan paling tinggi (diff terkecil)
-            scores.sort((a, b) => a.diff - b.diff);
-
-            // Array identitas akhir
-            let currentState = new Array(scrMats.length).fill(-1);
-            let usedScr = new Set();
-            let usedRef = new Set();
-
-            for (let i = 0; i < scores.length; i++) {
-                let match = scores[i];
-                // Jika identitas potongan belum dikunci, maka kunci (Mencegah ganda)
-                if (!usedScr.has(match.scrIdx) && !usedRef.has(match.refIdx)) {
-                    currentState[match.scrIdx] = match.refIdx;
-                    usedScr.add(match.scrIdx);
-                    usedRef.add(match.refIdx);
-                }
-            }
-            // --- AKHIR PERBAIKAN ---
-
-            refSrc.delete(); scrSrc.delete(); refGray.delete(); scrGray.delete();
-            refMats.forEach(m => m.delete()); scrMats.forEach(m => m.delete());
-
-            // Validasi jika ada yang gagal terpetakan (biasanya karena margin salah/garis grid ikut terdeteksi)
-            if (currentState.includes(-1)) {
-                throw new Error("Gagal mengunci identitas unik. Harap atur ulang margin.");
-            }
-
-            // Siklus Pertukaran (Swapping Logic)
-            generatedSwaps = [];
-            let state = [...currentState];
-            let stepCount = 1;
-
-            for (let i = 0; i < state.length; i++) {
-                while (state[i] !== i) {
-                    let correctPos = state[i]; 
-                    let targetContent = state[correctPos]; // Gambar yg menduduki tempat tujuan saat ini
-
-                    generatedSwaps.push({ from: i, to: correctPos });
-                    
-                    // Laporan Log diperjelas dengan Identitas Ganda
-                    logMsg(`Step ${stepCount}: Sel ${i} (Gbr ${state[i]}) ➔ Sel ${correctPos}`);
-                    logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Info: Gbr ${targetContent} dari Sel ${correctPos} terlempar ke Sel ${i}</i>`);
-                    stepCount++;
-                    
-                    // Tukar
-                    let temp = state[i];
-                    state[i] = state[correctPos];
-                    state[correctPos] = temp;
-                }
-            }
-
-            if (generatedSwaps.length === 0) {
-                logMsg("Puzzle sudah tersusun dengan benar!");
-            } else {
-                logMsg(`<br><b>[SELESAI] Total langkah: ${generatedSwaps.length}</b>`);
-                document.getElementById('btnDownload').style.display = 'block';
-            }
-            document.getElementById('status').innerText = "Proses selesai!";
-            
-        } catch (err) {
-            console.error("System Error:", err);
-            document.getElementById('status').innerText = "Terjadi kesalahan sistem.";
-            logMsg(`<span style="color:#e74c3c">ERROR: ${err.message}</span>`);
-        } finally {
-            document.getElementById('processBtn').disabled = false;
         }
-    }, 150); 
+        scores.sort((a, b) => a.diff - b.diff);
+
+        let usedScr = new Set();
+        let usedRef = new Set();
+        for (let i = 0; i < scores.length; i++) {
+            let match = scores[i];
+            if (!usedScr.has(match.scrIdx) && !usedRef.has(match.refIdx)) {
+                currentState[match.scrIdx] = match.refIdx;
+                usedScr.add(match.scrIdx); usedRef.add(match.refIdx);
+            }
+        }
+
+        refSrc.delete(); scrSrc.delete(); refGray.delete(); scrGray.delete();
+        refMats.forEach(m => m.delete()); scrMats.forEach(m => m.delete());
+    }
+
+    // Render Thumbnail UI
+    thumbContainer.innerHTML = '';
+    cells.forEach((c, i) => {
+        let box = document.createElement('div');
+        box.className = 'thumb-box';
+        
+        // Buat mini canvas crop
+        let tCanv = document.createElement('canvas');
+        tCanv.width = c.w; tCanv.height = c.h;
+        let tCtx = tCanv.getContext('2d');
+        tCtx.drawImage(scrImgObj, c.x, c.y, c.w, c.h, 0, 0, c.w, c.h);
+        
+        let lbl = document.createElement('div');
+        lbl.className = 'lbl';
+        lbl.innerHTML = `Sel ${i}<br>Isi: <span>${currentState[i]}</span>`;
+        
+        box.appendChild(tCanv);
+        box.appendChild(lbl);
+        thumbContainer.appendChild(box);
+    });
+
+    // Generate Textarea Matrix String
+    let matrixStr = "";
+    for(let r=0; r<rows; r++) {
+        let rowArr = [];
+        for(let c=0; c<cols; c++) {
+            let val = currentState[r*cols + c];
+            // Format padding agar rapi, misal angka '9' jadi ' 9', '-1' jadi '-1'
+            rowArr.push(val.toString().padStart(2, ' '));
+        }
+        matrixStr += rowArr.join(", ") + "\n";
+    }
+    document.getElementById('stateArea').value = matrixStr.trim();
+    
+    // Tampilkan Panel Matrix
+    document.getElementById('matrixPanel').style.display = 'block';
+    document.getElementById('status').innerText = "Potongan berhasil diekstrak! Cek & perbaiki angka jika perlu.";
 };
 
-function logMsg(msg) {
-    logs.innerHTML += `<div>${msg}</div>`;
-    logs.scrollTop = logs.scrollHeight;
-}
-
 // ==========================================
-// OUTPUT JSON KEYMAPPER
+// TAHAP 2: CYCLE SORT & DOWNLOAD JSON
 // ==========================================
-document.getElementById('btnDownload').onclick = () => {
-    if (generatedSwaps.length === 0) return;
+document.getElementById('btnSolve').onclick = () => {
+    let stateText = document.getElementById('stateArea').value;
+    // Bersihkan spasi/enter, ambil array angka
+    let state = stateText.split(/[\s,]+/).filter(x => x !== '').map(Number);
+    
+    const cells = getGridCells(scrCanvas.width, scrCanvas.height);
+    
+    // Validasi
+    if (state.length !== cells.length) {
+        return alert(`Error: Jumlah angka (${state.length}) tidak sama dengan jumlah grid (${cells.length}). Periksa kembali teks Anda.`);
+    }
+    if (state.includes(-1)) {
+        return alert("Error: Masih ada angka -1. Harap isi identitas yang benar untuk sel tersebut.");
+    }
+    // Cek duplikat (Validasi 1-to-1)
+    let uniqueSet = new Set(state);
+    if (uniqueSet.size !== state.length) {
+        return alert("Error: Ada angka identitas yang sama/ganda. Setiap sel harus punya nomor 0 hingga " + (cells.length-1) + " secara unik.");
+    }
 
+    logs.innerHTML = ''; logs.style.display = 'block';
+    let generatedSwaps = [];
+    let stepCount = 1;
+
+    // Cycle Sort Logic
+    for (let i = 0; i < state.length; i++) {
+        while (state[i] !== i) {
+            let correctPos = state[i]; 
+            let targetContent = state[correctPos]; 
+
+            generatedSwaps.push({ from: i, to: correctPos });
+            
+            logMsg(`Step ${stepCount}: Sel ${i} (Isi ${state[i]}) ➔ Pindah ke Sel ${correctPos}`);
+            logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Efek: Isi ${targetContent} dari Sel ${correctPos} terlempar balik ke Sel ${i}</i>`);
+            stepCount++;
+            
+            let temp = state[i];
+            state[i] = state[correctPos];
+            state[correctPos] = temp;
+        }
+    }
+
+    if (generatedSwaps.length === 0) {
+        logMsg("Puzzle sudah tersusun dengan benar! Tidak perlu disolve.");
+        return;
+    }
+    
+    logMsg(`<br><b>[SELESAI] Total langkah: ${generatedSwaps.length}</b>`);
+    
+    // Eksekusi Generate JSON Output
+    generateJSON(generatedSwaps, cells);
+};
+
+function generateJSON(swaps, cells) {
     const targetW = parseFloat(document.getElementById('screenWidth').value) || 1260;
     const targetH = parseFloat(document.getElementById('screenHeight').value) || 2800;
     
-    const scaleX = targetW / refCanvas.width;
-    const scaleY = targetH / refCanvas.height;
+    // Scale terhadap gambar acak (karena gambar ini yg wajib ada)
+    const scaleX = targetW / scrCanvas.width;
+    const scaleY = targetH / scrCanvas.height;
 
-    const cells = getGridCells(refCanvas.width, refCanvas.height);
-
-    const actionList = generatedSwaps.map((swap, index) => {
+    const actionList = swaps.map((swap) => {
         let startCell = cells[swap.from];
         let endCell = cells[swap.to];
 
@@ -459,7 +497,12 @@ document.getElementById('btnDownload').onclick = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-};
+}
+
+function logMsg(msg) {
+    logs.innerHTML += `<div>${msg}</div>`;
+    logs.scrollTop = logs.scrollHeight;
+}
 </script>
 
 </body>
