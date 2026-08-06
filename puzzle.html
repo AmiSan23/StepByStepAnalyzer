@@ -205,10 +205,9 @@ document.getElementById('scrImage').addEventListener('change', (e) => {
 });
 
 function checkReady() {
-    // Tombol Ekstrak aktif jika minimal Gambar Acak & OpenCV siap
     if (scrLoaded && cvReady) {
         document.getElementById('btnExtract').disabled = false;
-        document.getElementById('status').innerText = refLoaded ? "Siap diekstrak (Auto-Match Aktif)" : "Siap diekstrak (Mode Manual, Target tidak ada)";
+        document.getElementById('status').innerText = refLoaded ? "Siap diekstrak (Auto-Match Aktif)" : "Siap diekstrak (Mode Manual Aktif, Target kosong)";
     }
 }
 
@@ -283,9 +282,9 @@ document.getElementById('btnExtract').onclick = () => {
     
     document.getElementById('maxNum').innerText = (cells.length - 1);
     
-    let currentState = new Array(cells.length).fill(-1); // Default -1 (Tidak dikenali)
+    let currentState = new Array(cells.length).fill(-1); 
 
-    // Jika Target Gambar 1 ada, lakukan OpenCV Matching
+    // Jika Target Gambar 1 ada, lakukan Auto OpenCV
     if (refLoaded) {
         let refSrc = cv.imread(refCanvas);
         let scrSrc = cv.imread(scrCanvas);
@@ -337,7 +336,6 @@ document.getElementById('btnExtract').onclick = () => {
         let box = document.createElement('div');
         box.className = 'thumb-box';
         
-        // Buat mini canvas crop
         let tCanv = document.createElement('canvas');
         tCanv.width = c.w; tCanv.height = c.h;
         let tCtx = tCanv.getContext('2d');
@@ -345,29 +343,35 @@ document.getElementById('btnExtract').onclick = () => {
         
         let lbl = document.createElement('div');
         lbl.className = 'lbl';
-        lbl.innerHTML = `Sel ${i}<br>Isi: <span>${currentState[i]}</span>`;
+        let statusTxt = currentState[i] === -1 ? '?' : currentState[i];
+        lbl.innerHTML = `Sel ${i}<br>Tujuan: <span>${statusTxt}</span>`;
         
         box.appendChild(tCanv);
         box.appendChild(lbl);
         thumbContainer.appendChild(box);
     });
 
-    // Generate Textarea Matrix String
+    // Generate FORMAT BARU: 0-?, 1-3, 2-15
     let matrixStr = "";
     for(let r=0; r<rows; r++) {
         let rowArr = [];
         for(let c=0; c<cols; c++) {
-            let val = currentState[r*cols + c];
-            // Format padding agar rapi, misal angka '9' jadi ' 9', '-1' jadi '-1'
-            rowArr.push(val.toString().padStart(2, ' '));
+            let idx = r * cols + c;
+            let val = currentState[idx];
+            let valStr = val === -1 ? "?" : val;
+            
+            // Format teks "0-?" atau "0-5" (PadStart agar lurus vertikal)
+            rowArr.push(`${idx}-${valStr}`.padStart(5, ' '));
         }
-        matrixStr += rowArr.join(", ") + "\n";
+        matrixStr += rowArr.join(",   ") + "\n";
     }
+    
+    // Ubah placeholder area text agar sesuai contoh
+    document.getElementById('stateArea').placeholder = "Contoh:\n0-12, 1-4, 2-9\n3-1, 4-6, 5-0";
     document.getElementById('stateArea').value = matrixStr.trim();
     
-    // Tampilkan Panel Matrix
     document.getElementById('matrixPanel').style.display = 'block';
-    document.getElementById('status').innerText = "Potongan berhasil diekstrak! Cek & perbaiki angka jika perlu.";
+    document.getElementById('status').innerText = "Ekstrak selesai! Sesuaikan pasangan [Sel-Tujuan] di teks.";
 };
 
 // ==========================================
@@ -375,29 +379,49 @@ document.getElementById('btnExtract').onclick = () => {
 // ==========================================
 document.getElementById('btnSolve').onclick = () => {
     let stateText = document.getElementById('stateArea').value;
-    // Bersihkan spasi/enter, ambil array angka
-    let state = stateText.split(/[\s,]+/).filter(x => x !== '').map(Number);
-    
     const cells = getGridCells(scrCanvas.width, scrCanvas.height);
     
-    // Validasi
-    if (state.length !== cells.length) {
-        return alert(`Error: Jumlah angka (${state.length}) tidak sama dengan jumlah grid (${cells.length}). Periksa kembali teks Anda.`);
-    }
-    if (state.includes(-1)) {
-        return alert("Error: Masih ada angka -1. Harap isi identitas yang benar untuk sel tersebut.");
-    }
-    // Cek duplikat (Validasi 1-to-1)
-    let uniqueSet = new Set(state);
-    if (uniqueSet.size !== state.length) {
-        return alert("Error: Ada angka identitas yang sama/ganda. Setiap sel harus punya nomor 0 hingga " + (cells.length-1) + " secara unik.");
+    // Siapkan array kosong untuk menerima identitas
+    let state = new Array(cells.length).fill(-1);
+    
+    // Regex canggih: Mencari pola angka diikuti tanda hubung/sama_dengan/titik_dua lalu angka lagi
+    // Contoh yang terdeteksi: 0-2, 1=5, 2: 12, 3 - 4
+    let regex = /(\d+)\s*[-=:]\s*(\d+|\?)/g;
+    let match;
+    let pairCount = 0;
+    
+    while ((match = regex.exec(stateText)) !== null) {
+        let cellIdx = parseInt(match[1]);
+        let targetIdx = match[2];
+        
+        if (targetIdx === '?') {
+            return alert(`Error: Masih ada sel yang bernilai "?" (Sel ${cellIdx}). Harap isi dengan angka tujuan secara manual.`);
+        }
+        targetIdx = parseInt(targetIdx);
+
+        if (cellIdx >= 0 && cellIdx < cells.length) {
+            state[cellIdx] = targetIdx;
+            pairCount++;
+        }
     }
 
+    // Validasi
+    if (pairCount !== cells.length) {
+        return alert(`Error: Terdeteksi ${pairCount} pasangan, padahal seharusnya ada ${cells.length} kotak grid. Pastikan format teks adalah "Sel-Tujuan" (Cth: 0-5, 1-12).`);
+    }
+    if (state.includes(-1)) {
+        return alert("Error: Ada sel yang terlewat (nilainya -1). Periksa kembali angka Anda.");
+    }
+    let uniqueSet = new Set(state);
+    if (uniqueSet.size !== state.length) {
+        return alert("Error: Ada angka tujuan yang ganda/bentrok. Setiap sel harus punya tujuan yang unik (0 hingga " + (cells.length-1) + ").");
+    }
+
+    // Eksekusi Pemecahan
     logs.innerHTML = ''; logs.style.display = 'block';
     let generatedSwaps = [];
     let stepCount = 1;
 
-    // Cycle Sort Logic
     for (let i = 0; i < state.length; i++) {
         while (state[i] !== i) {
             let correctPos = state[i]; 
@@ -405,8 +429,8 @@ document.getElementById('btnSolve').onclick = () => {
 
             generatedSwaps.push({ from: i, to: correctPos });
             
-            logMsg(`Step ${stepCount}: Sel ${i} (Isi ${state[i]}) ➔ Pindah ke Sel ${correctPos}`);
-            logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Efek: Isi ${targetContent} dari Sel ${correctPos} terlempar balik ke Sel ${i}</i>`);
+            logMsg(`Step ${stepCount}: Swipe Isi Sel ${i} ➔ Ke Sel ${correctPos}`);
+            logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Efek: Isi dari Sel ${correctPos} terlempar balik ke Sel ${i}</i>`);
             stepCount++;
             
             let temp = state[i];
@@ -416,21 +440,18 @@ document.getElementById('btnSolve').onclick = () => {
     }
 
     if (generatedSwaps.length === 0) {
-        logMsg("Puzzle sudah tersusun dengan benar! Tidak perlu disolve.");
+        logMsg("Puzzle sudah tersusun dengan benar!");
         return;
     }
     
     logMsg(`<br><b>[SELESAI] Total langkah: ${generatedSwaps.length}</b>`);
-    
-    // Eksekusi Generate JSON Output
     generateJSON(generatedSwaps, cells);
 };
 
+// Fungsi Output JSON (Sama seperti sebelumnya)
 function generateJSON(swaps, cells) {
     const targetW = parseFloat(document.getElementById('screenWidth').value) || 1260;
     const targetH = parseFloat(document.getElementById('screenHeight').value) || 2800;
-    
-    // Scale terhadap gambar acak (karena gambar ini yg wajib ada)
     const scaleX = targetW / scrCanvas.width;
     const scaleY = targetH / scrCanvas.height;
 
@@ -456,8 +477,7 @@ function generateJSON(swaps, cells) {
     });
 
     const keymapData = {
-        "app_version": 63,
-        "keymap_db_version": 13,
+        "app_version": 63, "keymap_db_version": 13,
         "fingerprint_map_list": [
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
@@ -466,21 +486,10 @@ function generateJSON(swaps, cells) {
         ],
         "keymap_list": [{
             "actionList": actionList,
-            "constraintList": [],
-            "constraintMode": 1,
-            "flags": 0,
-            "id": 27,
-            "isEnabled": true,
+            "constraintList": [], "constraintMode": 1, "flags": 0, "id": 27, "isEnabled": true,
             "trigger": {
-                "extras": [],
-                "flags": 1,
-                "keys": [{
-                    "clickType": 2, 
-                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
-                    "flags": 0,
-                    "keyCode": 24, 
-                    "uid": crypto.randomUUID()
-                }],
+                "extras": [], "flags": 1, 
+                "keys": [{ "clickType": 2, "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", "flags": 0, "keyCode": 24, "uid": crypto.randomUUID() }], 
                 "mode": 2
             },
             "uid": crypto.randomUUID()
