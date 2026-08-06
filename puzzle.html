@@ -19,7 +19,6 @@
         .upload-box { border: 2px dashed var(--primary); padding: 15px; text-align: center; border-radius: 8px; background: #faf5fc; }
         .upload-box input { width: 100%; font-size: 0.85rem; cursor: pointer; }
         
-        /* PREVIEW WRAPPER DIKEMBALIKAN */
         .preview-wrapper { width: 100%; position: relative; border: 2px solid #333; border-radius: 6px; overflow: hidden; line-height: 0; background: #000; margin-bottom: 15px; }
         .preview-wrapper canvas { width: 100%; display: block; }
         .canvas-label { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; font-size: 0.75rem; font-weight: bold; z-index: 10; }
@@ -36,11 +35,22 @@
         .grid-settings { display: flex; gap: 10px; margin-bottom: 10px; }
         .grid-settings select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; outline: none; }
 
-        /* INTERACTIVE SIMULATION GRID */
+        /* INTERACTIVE SIMULATION GRID (PERBAIKAN ASPECT RATIO) */
         .sim-container { margin: 15px 0; display: flex; flex-direction: column; align-items: center; }
         .sim-grid { display: grid; gap: 4px; background: #333; padding: 6px; border-radius: 8px; max-width: 100%; }
-        .sim-cell { background: #fff; cursor: pointer; position: relative; border: 2px solid transparent; border-radius: 4px; overflow: hidden; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
-        .sim-cell canvas { width: 100%; height: 100%; display: block; object-fit: cover; }
+        
+        .sim-cell { 
+            background: #fff; cursor: pointer; position: relative; 
+            border: 2px solid transparent; border-radius: 4px; 
+            overflow: hidden; 
+            /* aspect-ratio: 1; Dihapus agar mengikuti ukuran aslinya */
+        }
+        
+        .sim-cell canvas { 
+            width: 100%; height: auto; /* Memastikan Canvas tetap proporsional sesuai rasio asli */
+            display: block; 
+        }
+        
         .sim-cell .cell-idx { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.7); color: white; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; z-index: 2; font-weight: bold;}
         .sim-cell.selected { border-color: var(--danger); box-shadow: 0 0 10px var(--danger); transform: scale(0.95); transition: 0.1s; }
 
@@ -77,7 +87,7 @@
         </div>
     </div>
 
-    <!-- PREVIEW AREA (DIKEMBALIKAN AGAR BISA SETTING MARGIN) -->
+    <!-- PREVIEW AREA (Margin Visual) -->
     <div class="preview-wrapper" id="previewWrapper" style="display: none;">
         <div class="canvas-label">PREVIEW GRID (Sesuaikan Margin)</div>
         <canvas id="scrCanvas"></canvas>
@@ -163,6 +173,20 @@ const simGrid = document.getElementById('simGrid');
 const previewWrapper = document.getElementById('previewWrapper');
 
 // ==========================================
+// FUNGSI FALLBACK UUID (Mencegah Error Local File)
+// ==========================================
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // Fallback bagi browser lokal tanpa HTTPS
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        let r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// ==========================================
 // HANDLE UPLOAD & PREVIEW GRID
 // ==========================================
 document.getElementById('scrImage').addEventListener('change', (e) => {
@@ -172,9 +196,7 @@ document.getElementById('scrImage').addEventListener('change', (e) => {
             scrCanvas.width = scrImgObj.naturalWidth;
             scrCanvas.height = scrImgObj.naturalHeight;
             
-            // Tampilkan wrapper preview
             previewWrapper.style.display = 'block';
-            
             drawOverlays();
             
             document.getElementById('btnExtract').disabled = false;
@@ -184,7 +206,6 @@ document.getElementById('scrImage').addEventListener('change', (e) => {
     }
 });
 
-// Slider Margin Updates
 ['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
     document.getElementById(id).addEventListener('input', (e) => {
         const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
@@ -224,14 +245,13 @@ function getGridCells(width, height) {
     return cells;
 }
 
-// Fungsi menggambar gambar asli + garis margin hijau/kuning
 function drawOverlays() {
     scrCtx.clearRect(0, 0, scrCanvas.width, scrCanvas.height);
     scrCtx.drawImage(scrImgObj, 0, 0);
     
     gridCells = getGridCells(scrCanvas.width, scrCanvas.height);
     
-    scrCtx.strokeStyle = "rgba(0, 255, 0, 0.8)"; // Garis hijau terang
+    scrCtx.strokeStyle = "rgba(0, 255, 0, 0.8)"; 
     scrCtx.lineWidth = Math.max(3, scrCanvas.width / 200);
     
     gridCells.forEach(c => {
@@ -247,11 +267,9 @@ function drawOverlays() {
 // INISIALISASI AREA SIMULASI INTERAKTIF
 // ==========================================
 document.getElementById('btnExtract').onclick = () => {
-    // Scroll mulus ke panel simulasi
     document.getElementById('simulationPanel').style.display = 'block';
     document.getElementById('simulationPanel').scrollIntoView({ behavior: 'smooth' });
     
-    // Inisialisasi posisi (1-to-1)
     currentPieces = Array.from({length: gridCells.length}, (_, i) => i);
     selectedCellIndex = null;
 
@@ -275,7 +293,6 @@ function renderSimulationGrid() {
         badge.className = 'cell-idx';
         badge.innerText = `Pos:${slotIndex} (Asal:${pieceOriginalId})`;
 
-        // Potong gambar menggunakan koordinat sel aslinya
         let targetCellCoords = gridCells[pieceOriginalId];
         let miniCanvas = document.createElement('canvas');
         miniCanvas.width = targetCellCoords.w;
@@ -283,7 +300,7 @@ function renderSimulationGrid() {
         let mCtx = miniCanvas.getContext('2d');
         
         mCtx.drawImage(
-            scrImgObj, // Ambil dari Image aslinya (bukan canvas yg ada garis hijaunya)
+            scrImgObj, 
             targetCellCoords.x, targetCellCoords.y, targetCellCoords.w, targetCellCoords.h, 
             0, 0, targetCellCoords.w, targetCellCoords.h
         );
@@ -300,7 +317,6 @@ function handleCellClick(slotIndex) {
     if (selectedCellIndex === null) {
         selectedCellIndex = slotIndex;
     } else {
-        // Swap elemen array
         let temp = currentPieces[selectedCellIndex];
         currentPieces[selectedCellIndex] = currentPieces[slotIndex];
         currentPieces[slotIndex] = temp;
@@ -312,15 +328,10 @@ function handleCellClick(slotIndex) {
 function updateTextareaState() {
     let pairs = [];
     for(let i=0; i<currentPieces.length; i++) {
-        // Karena potongan dengan ID = `currentPieces[i]` sekarang duduk di slot `i`,
-        // Berarti tempat tujuan/benar bagi `currentPieces[i]` adalah `i`.
-        // Format kita: SelAwal - TujuanAkhir
         pairs.push(`${currentPieces[i]}-${i}`);
     }
     
-    // Urutkan berdasarkan Sel Awal agar enak dibaca (0-..., 1-..., 2-...)
     pairs.sort((a, b) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]));
-    
     document.getElementById('stateArea').value = pairs.join(",  ");
 }
 
@@ -402,7 +413,7 @@ document.getElementById('btnDownload').onclick = () => {
             ],
             "flags": 0,
             "type": "SWIPE_COORDINATE",
-            "uid": crypto.randomUUID()
+            "uid": generateUUID() // <-- PERBAIKAN UUID
         };
     });
 
@@ -419,10 +430,10 @@ document.getElementById('btnDownload').onclick = () => {
             "constraintList": [], "constraintMode": 1, "flags": 0, "id": 27, "isEnabled": true,
             "trigger": {
                 "extras": [], "flags": 1, 
-                "keys": [{ "clickType": 2, "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", "flags": 0, "keyCode": 24, "uid": crypto.randomUUID() }], 
+                "keys": [{ "clickType": 2, "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", "flags": 0, "keyCode": 24, "uid": generateUUID() }], // <-- PERBAIKAN UUID
                 "mode": 2
             },
-            "uid": crypto.randomUUID()
+            "uid": generateUUID() // <-- PERBAIKAN UUID
         }]
     };
 
@@ -434,8 +445,11 @@ document.getElementById('btnDownload').onclick = () => {
     a.download = `Sorting_Puzzle_${timestamp}.json`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
 };
 </script>
 
