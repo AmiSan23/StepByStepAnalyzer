@@ -17,8 +17,13 @@
 
         .upload-section { margin-bottom: 15px; }
         .upload-box { border: 2px dashed var(--primary); padding: 15px; text-align: center; border-radius: 8px; background: #faf5fc; }
-        .upload-box input { width: 100%; font-size: 0.85rem; }
+        .upload-box input { width: 100%; font-size: 0.85rem; cursor: pointer; }
         
+        /* PREVIEW WRAPPER DIKEMBALIKAN */
+        .preview-wrapper { width: 100%; position: relative; border: 2px solid #333; border-radius: 6px; overflow: hidden; line-height: 0; background: #000; margin-bottom: 15px; }
+        .preview-wrapper canvas { width: 100%; display: block; }
+        .canvas-label { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; font-size: 0.75rem; font-weight: bold; z-index: 10; }
+
         .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 15px; }
         .slider-section { margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
         .slider-title { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; text-transform: uppercase; margin-bottom: 10px; display: block; }
@@ -36,8 +41,8 @@
         .sim-grid { display: grid; gap: 4px; background: #333; padding: 6px; border-radius: 8px; max-width: 100%; }
         .sim-cell { background: #fff; cursor: pointer; position: relative; border: 2px solid transparent; border-radius: 4px; overflow: hidden; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
         .sim-cell canvas { width: 100%; height: 100%; display: block; object-fit: cover; }
-        .sim-cell .cell-idx { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.7); color: white; font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; z-index: 2; }
-        .sim-cell.selected { border-color: var(--danger); box-shadow: 0 0 10px var(--danger); }
+        .sim-cell .cell-idx { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.7); color: white; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; z-index: 2; font-weight: bold;}
+        .sim-cell.selected { border-color: var(--danger); box-shadow: 0 0 10px var(--danger); transform: scale(0.95); transition: 0.1s; }
 
         #stateArea { width: 100%; height: 80px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; resize: vertical; text-align: center; }
 
@@ -50,7 +55,6 @@
         .log-box { background: #222; color: #0f0; padding: 10px; font-family: monospace; font-size: 0.8rem; height: 150px; overflow-y: auto; border-radius: 4px; display: none; margin-top: 15px;}
         #status { text-align: center; font-size: 0.85rem; margin: 10px 0; color: #666; font-weight: bold;}
     </style>
-    <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
 </head>
 <body>
 
@@ -71,6 +75,12 @@
             <span class="slider-title">Upload Gambar Puzzle (Acak)</span>
             <input type="file" id="scrImage" accept="image/*">
         </div>
+    </div>
+
+    <!-- PREVIEW AREA (DIKEMBALIKAN AGAR BISA SETTING MARGIN) -->
+    <div class="preview-wrapper" id="previewWrapper" style="display: none;">
+        <div class="canvas-label">PREVIEW GRID (Sesuaikan Margin)</div>
+        <canvas id="scrCanvas"></canvas>
     </div>
 
     <div class="control-panel">
@@ -111,7 +121,7 @@
 
     <!-- Area Simulasi Interaktif -->
     <div class="control-panel" id="simulationPanel" style="display:none; border-color: var(--primary);">
-        <span class="slider-title" style="text-align: center; color: var(--primary);">Area Simulasi (Klik Kotak A, Lalu Klik Kotak B untuk Menukar Posisi)</span>
+        <span class="slider-title" style="text-align: center; color: var(--primary);">Area Simulasi<br><span style="font-size:0.65rem; color:#666;">Klik Kotak 1, Lalu Klik Kotak 2 untuk Menukar Posisi</span></span>
         
         <div class="sim-container">
             <div id="simGrid" class="sim-grid"></div>
@@ -134,60 +144,56 @@
         <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON KEYMAP</button>
     </div>
 
-    <div id="status">Menunggu OpenCV & Upload Gambar...</div>
+    <div id="status">Silakan upload gambar puzzle.</div>
     <div class="log-box" id="swapLogs"></div>
 </div>
 
-<input type="file" id="hiddenScr" style="display:none">
-<canvas id="scrCanvas" style="display:none"></canvas>
-
 <script>
-let cvReady = false;
 let scrImgObj = new Image();
 let scrLoaded = false;
 let gridCells = [];
-let currentPieces = []; // Menyimpan ID asal potongan gambar di setiap slot simulasi
-let selectedCellIndex = null; // Menyimpan sel yang sedang diklik pertama kali untuk ditukar
+let currentPieces = []; 
+let selectedCellIndex = null; 
 let generatedSwaps = [];
 
 const scrCanvas = document.getElementById('scrCanvas');
 const scrCtx = scrCanvas.getContext('2d', {willReadFrequently: true});
 const logs = document.getElementById('swapLogs');
 const simGrid = document.getElementById('simGrid');
+const previewWrapper = document.getElementById('previewWrapper');
 
-function onOpenCvReady() {
-    cvReady = true;
-    document.getElementById('status').innerText = "OpenCV Siap. Silakan upload gambar puzzle.";
-    checkReady();
-}
-
+// ==========================================
+// HANDLE UPLOAD & PREVIEW GRID
+// ==========================================
 document.getElementById('scrImage').addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
         scrImgObj.onload = () => {
             scrLoaded = true;
             scrCanvas.width = scrImgObj.naturalWidth;
             scrCanvas.height = scrImgObj.naturalHeight;
-            scrCtx.drawImage(scrImgObj, 0, 0);
-            checkReady();
+            
+            // Tampilkan wrapper preview
+            previewWrapper.style.display = 'block';
+            
+            drawOverlays();
+            
+            document.getElementById('btnExtract').disabled = false;
+            document.getElementById('status').innerText = "Gambar siap! Sesuaikan garis, lalu klik Mulai Simulasi.";
         };
         scrImgObj.src = URL.createObjectURL(e.target.files[0]);
     }
 });
 
-function checkReady() {
-    if (scrLoaded && cvReady) {
-        document.getElementById('btnExtract').disabled = false;
-        document.getElementById('status').innerText = "Gambar siap! Klik tombol Mulai Simulasi.";
-    }
-}
-
-// Slider Margin
+// Slider Margin Updates
 ['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
     document.getElementById(id).addEventListener('input', (e) => {
         const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
         document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+        if(scrLoaded) drawOverlays();
     });
 });
+document.getElementById('gridCols').addEventListener('change', () => { if(scrLoaded) drawOverlays(); });
+document.getElementById('gridRows').addEventListener('change', () => { if(scrLoaded) drawOverlays(); });
 
 function getGridCells(width, height) {
     const t = parseFloat(document.getElementById('marginTop').value) / 100;
@@ -218,23 +224,39 @@ function getGridCells(width, height) {
     return cells;
 }
 
+// Fungsi menggambar gambar asli + garis margin hijau/kuning
+function drawOverlays() {
+    scrCtx.clearRect(0, 0, scrCanvas.width, scrCanvas.height);
+    scrCtx.drawImage(scrImgObj, 0, 0);
+    
+    gridCells = getGridCells(scrCanvas.width, scrCanvas.height);
+    
+    scrCtx.strokeStyle = "rgba(0, 255, 0, 0.8)"; // Garis hijau terang
+    scrCtx.lineWidth = Math.max(3, scrCanvas.width / 200);
+    
+    gridCells.forEach(c => {
+        scrCtx.strokeRect(c.x, c.y, c.w, c.h);
+        scrCtx.fillStyle = "yellow";
+        scrCtx.beginPath(); 
+        scrCtx.arc(c.cx, c.cy, scrCtx.lineWidth * 2, 0, Math.PI*2); 
+        scrCtx.fill();
+    });
+}
+
 // ==========================================
 // INISIALISASI AREA SIMULASI INTERAKTIF
 // ==========================================
 document.getElementById('btnExtract').onclick = () => {
-    const cols = parseInt(document.getElementById('gridCols').value);
-    const rows = parseInt(document.getElementById('gridRows').value);
+    // Scroll mulus ke panel simulasi
+    document.getElementById('simulationPanel').style.display = 'block';
+    document.getElementById('simulationPanel').scrollIntoView({ behavior: 'smooth' });
     
-    gridCells = getGridCells(scrCanvas.width, scrCanvas.height);
-    
-    // Inisialisasi awal: Slot i berisi potongan gambar i (berurutan)
+    // Inisialisasi posisi (1-to-1)
     currentPieces = Array.from({length: gridCells.length}, (_, i) => i);
     selectedCellIndex = null;
 
     renderSimulationGrid();
-    
-    document.getElementById('simulationPanel').style.display = 'block';
-    document.getElementById('status').innerText = "Simulasi aktif! Silakan klik kotak-kotak untuk merapikan posisinya ke urutan yang benar.";
+    document.getElementById('status').innerText = "Simulasi aktif! Silakan klik kotak-kotak untuk merapikan posisinya.";
 };
 
 function renderSimulationGrid() {
@@ -249,12 +271,11 @@ function renderSimulationGrid() {
         
         cellDiv.onclick = () => handleCellClick(slotIndex);
 
-        // Label nomor slot
         let badge = document.createElement('div');
         badge.className = 'cell-idx';
-        badge.innerText = `Sel ${slotIndex} (Isi:${pieceOriginalId})`;
+        badge.innerText = `Pos:${slotIndex} (Asal:${pieceOriginalId})`;
 
-        // Potong gambar asli menggunakan Canvas kecil sesuai potongan aslinya di grid
+        // Potong gambar menggunakan koordinat sel aslinya
         let targetCellCoords = gridCells[pieceOriginalId];
         let miniCanvas = document.createElement('canvas');
         miniCanvas.width = targetCellCoords.w;
@@ -262,7 +283,7 @@ function renderSimulationGrid() {
         let mCtx = miniCanvas.getContext('2d');
         
         mCtx.drawImage(
-            scrCanvas, 
+            scrImgObj, // Ambil dari Image aslinya (bukan canvas yg ada garis hijaunya)
             targetCellCoords.x, targetCellCoords.y, targetCellCoords.w, targetCellCoords.h, 
             0, 0, targetCellCoords.w, targetCellCoords.h
         );
@@ -275,35 +296,36 @@ function renderSimulationGrid() {
     updateTextareaState();
 }
 
-// Mekanisme Klik & Tukar (Swap) di Simulasi Visual
 function handleCellClick(slotIndex) {
     if (selectedCellIndex === null) {
-        // Pilih kotak pertama
         selectedCellIndex = slotIndex;
     } else {
-        // Pilih kotak kedua, lakukan penukaran (Swap) isi potongan gambar
+        // Swap elemen array
         let temp = currentPieces[selectedCellIndex];
         currentPieces[selectedCellIndex] = currentPieces[slotIndex];
         currentPieces[slotIndex] = temp;
-        
-        selectedCellIndex = null; // Reset pilihan
+        selectedCellIndex = null; 
     }
     renderSimulationGrid();
 }
 
-// Memperbarui Textarea secara otomatis berdasarkan posisi terkini di Simulasi
 function updateTextareaState() {
-    // currentPieces berisi [isi_di_sel_0, isi_di_sel_1, ...]
-    // Kita ubah ke format "Sel - Tujuan" yang diinginkan
     let pairs = [];
     for(let i=0; i<currentPieces.length; i++) {
-        pairs.push(`${i}-${currentPieces[i]}`);
+        // Karena potongan dengan ID = `currentPieces[i]` sekarang duduk di slot `i`,
+        // Berarti tempat tujuan/benar bagi `currentPieces[i]` adalah `i`.
+        // Format kita: SelAwal - TujuanAkhir
+        pairs.push(`${currentPieces[i]}-${i}`);
     }
-    document.getElementById('stateArea').value = pairs.join(", ");
+    
+    // Urutkan berdasarkan Sel Awal agar enak dibaca (0-..., 1-..., 2-...)
+    pairs.sort((a, b) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]));
+    
+    document.getElementById('stateArea').value = pairs.join(",  ");
 }
 
 // ==========================================
-// TAHAP PROSES SWIPE & DOWNLOAD JSON
+// PROSES CYCLE SORT & JSON
 // ==========================================
 document.getElementById('btnSolve').onclick = () => {
     let stateText = document.getElementById('stateArea').value;
@@ -323,7 +345,7 @@ document.getElementById('btnSolve').onclick = () => {
     }
 
     if (count !== gridCells.length || state.includes(-1)) {
-        return alert("Format teks salah atau ada sel yang terlewat. Pastikan semua slot terisi format 'Sel-Isi'.");
+        return alert("Format teks salah atau ada sel yang terlewat. Pastikan semua kotak memiliki tujuannya.");
     }
 
     logs.innerHTML = ''; logs.style.display = 'block';
@@ -331,15 +353,13 @@ document.getElementById('btnSolve').onclick = () => {
     let workState = [...state];
     let stepCount = 1;
 
-    // Algoritma Cycle Sort
     for (let i = 0; i < workState.length; i++) {
         while (workState[i] !== i) {
             let correctPos = workState[i]; 
             let targetContent = workState[correctPos]; 
 
             generatedSwaps.push({ from: i, to: correctPos });
-            logMsg(`Step ${stepCount}: Swipe dari Sel ${i} ➔ Sel ${correctPos}`);
-            logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Efek: Konten ${targetContent} terlempar ke Sel ${i}</i>`);
+            logMsg(`Step ${stepCount}: Geser (Swipe) Kotak ke-${i} ➔ Menuju Kotak ke-${correctPos}`);
             stepCount++;
             
             let temp = workState[i];
@@ -355,10 +375,8 @@ document.getElementById('btnSolve').onclick = () => {
         logMsg(`<br><b>[SELESAI] Total langkah penukaran: ${generatedSwaps.length}</b>`);
         document.getElementById('btnDownload').style.display = 'block';
     }
-    document.getElementById('status').innerText = "Perhitungan jalur selesai! Silakan download JSON.";
 };
 
-// Download JSON KeyMapper
 document.getElementById('btnDownload').onclick = () => {
     if (generatedSwaps.length === 0) return;
 
@@ -419,11 +437,6 @@ document.getElementById('btnDownload').onclick = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 };
-
-function logMsg(msg) {
-    logs.innerHTML += `<div>${msg}</div>`;
-    logs.scrollTop = logs.scrollHeight;
-}
 </script>
 
 </body>
