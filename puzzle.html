@@ -3,28 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sorting Puzzle Solver</title>
+    <title>Sorting Puzzle Visual Simulator</title>
     <link rel="stylesheet" href="style.css">
     <style>
         :root { --primary: #9b59b6; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 800px; width: 100%; box-sizing: border-box; }
+        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 750px; width: 100%; box-sizing: border-box; }
         
         .nav-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .nav-header h2 { margin: 0; color: #2c3e50; font-size: 1.1rem; line-height: 1.6;}
         .nav-header a { text-decoration: none; color: #999; margin: 0 5px; transition: 0.2s; }
         .nav-header a.active { color: var(--primary); font-weight: bold; }
 
-        .upload-section { display: flex; gap: 10px; margin-bottom: 15px; }
-        .upload-box { flex: 1; border: 2px dashed #ccc; padding: 10px; text-align: center; border-radius: 8px; background: #fafafa; }
-        .upload-box input { width: 100%; font-size: 0.75rem; }
-        .upload-box p { font-size: 0.7rem; color: #888; margin: 5px 0 0 0;}
+        .upload-section { margin-bottom: 15px; }
+        .upload-box { border: 2px dashed var(--primary); padding: 15px; text-align: center; border-radius: 8px; background: #faf5fc; }
+        .upload-box input { width: 100%; font-size: 0.85rem; }
         
-        .preview-wrapper { display: flex; gap: 10px; margin-bottom: 15px; }
-        .canvas-container { flex: 1; position: relative; border: 2px solid #333; border-radius: 4px; overflow: hidden; line-height: 0; background: #000; }
-        .canvas-container canvas { width: 100%; display: block; }
-        .canvas-label { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; font-size: 0.7rem; font-weight: bold; }
-
         .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 15px; }
         .slider-section { margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
         .slider-title { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; text-transform: uppercase; margin-bottom: 10px; display: block; }
@@ -37,19 +31,20 @@
         .grid-settings { display: flex; gap: 10px; margin-bottom: 10px; }
         .grid-settings select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; outline: none; }
 
-        /* Thumbnails Preview */
-        .thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-bottom: 15px; background: #eee; padding: 10px; border-radius: 6px;}
-        .thumb-box { text-align: center; background: white; padding: 4px; border-radius: 4px; border: 1px solid #ccc;}
-        .thumb-box canvas { width: 100%; height: auto; border: 1px solid #ddd; background:#000;}
-        .thumb-box .lbl { font-size: 0.65rem; font-weight: bold; margin-top: 4px; color: #333;}
-        .thumb-box .lbl span { color: var(--danger); font-size: 0.8rem;}
+        /* INTERACTIVE SIMULATION GRID */
+        .sim-container { margin: 15px 0; display: flex; flex-direction: column; align-items: center; }
+        .sim-grid { display: grid; gap: 4px; background: #333; padding: 6px; border-radius: 8px; max-width: 100%; }
+        .sim-cell { background: #fff; cursor: pointer; position: relative; border: 2px solid transparent; border-radius: 4px; overflow: hidden; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+        .sim-cell canvas { width: 100%; height: 100%; display: block; object-fit: cover; }
+        .sim-cell .cell-idx { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.7); color: white; font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; z-index: 2; }
+        .sim-cell.selected { border-color: var(--danger); box-shadow: 0 0 10px var(--danger); }
 
-        /* Textarea Matrix */
-        #stateArea { width: 100%; height: 100px; font-family: monospace; font-size: 1rem; padding: 10px; border: 2px solid #ccc; border-radius: 6px; box-sizing: border-box; resize: vertical; text-align: center; letter-spacing: 2px;}
+        #stateArea { width: 100%; height: 80px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; resize: vertical; text-align: center; }
 
         .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
         .btn-extract { background: #f39c12; }
         .btn-start { background: var(--primary); }
+        .btn-download { background: var(--success); display: none; margin-top: 10px; }
         .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
         
         .log-box { background: #222; color: #0f0; padding: 10px; font-family: monospace; font-size: 0.8rem; height: 150px; overflow-y: auto; border-radius: 4px; display: none; margin-top: 15px;}
@@ -70,29 +65,11 @@
         </h2>
     </div>
 
-    <!-- Upload Gambar -->
+    <!-- Upload Gambar Acak Saja -->
     <div class="upload-section">
         <div class="upload-box">
-            <span class="slider-title">1. Target (Opsional)</span>
-            <input type="file" id="refImage" accept="image/*">
-            <p>Abaikan jika isi manual</p>
-        </div>
-        <div class="upload-box" style="border-color: var(--primary);">
-            <span class="slider-title" style="color:var(--primary)">2. Acak (Wajib)</span>
+            <span class="slider-title">Upload Gambar Puzzle (Acak)</span>
             <input type="file" id="scrImage" accept="image/*">
-            <p>Untuk memetakan koordinat</p>
-        </div>
-    </div>
-
-    <!-- Preview -->
-    <div class="preview-wrapper">
-        <div class="canvas-container">
-            <div class="canvas-label">TARGET (ASLI)</div>
-            <canvas id="refCanvas"></canvas>
-        </div>
-        <div class="canvas-container">
-            <div class="canvas-label">ACAK (SEKARANG)</div>
-            <canvas id="scrCanvas"></canvas>
         </div>
     </div>
 
@@ -129,18 +106,22 @@
             </div>
         </div>
 
-        <button id="btnExtract" class="btn btn-extract" disabled>TÁHAP 1: EKSTRAK POSISI & PREVIEW</button>
+        <button id="btnExtract" class="btn btn-extract" disabled>MULAI / RESET SIMULASI GRID</button>
     </div>
 
-    <!-- Panel Data Matrix (Hidden until extraction) -->
-    <div class="control-panel" id="matrixPanel" style="display:none; border-color: var(--primary);">
-        <span class="slider-title">Preview Potongan (Gambar Acak)</span>
-        <div id="thumbContainer" class="thumb-grid"></div>
-
-        <span class="slider-title">Matriks Posisi (Bisa Diedit Manual)</span>
-        <p style="font-size: 0.7rem; color: #666; margin-top:-5px;">Gunakan angka <b>0</b> hingga <b id="maxNum">X</b>. (Jika -1, berarti gambar tidak dikenali).</p>
-        <textarea id="stateArea" placeholder="Contoh:&#10;3, 6, 8&#10;1, 5, 7&#10;2, 4, 0"></textarea>
+    <!-- Area Simulasi Interaktif -->
+    <div class="control-panel" id="simulationPanel" style="display:none; border-color: var(--primary);">
+        <span class="slider-title" style="text-align: center; color: var(--primary);">Area Simulasi (Klik Kotak A, Lalu Klik Kotak B untuk Menukar Posisi)</span>
         
+        <div class="sim-container">
+            <div id="simGrid" class="sim-grid"></div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <span class="slider-title">Hasil Urutan Posisi (Bisa Diedit Manual)</span>
+            <textarea id="stateArea" placeholder="Contoh: 0-2, 2-11, ..."></textarea>
+        </div>
+
         <div class="slider-section" style="margin-top: 15px;">
             <span class="slider-title">Output Resolusi Layar (KeyMapper)</span>
             <div style="display: flex; gap: 10px;">
@@ -149,55 +130,44 @@
             </div>
         </div>
 
-        <button id="btnSolve" class="btn btn-start">TÁHAP 2: HITUNG SWAP & DOWNLOAD JSON</button>
+        <button id="btnSolve" class="btn btn-start">⚡ PROSES JADI LANGKAH SWIPE (JSON)</button>
+        <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON KEYMAP</button>
     </div>
 
-    <div id="status">Menunggu OpenCV...</div>
+    <div id="status">Menunggu OpenCV & Upload Gambar...</div>
     <div class="log-box" id="swapLogs"></div>
 </div>
 
+<input type="file" id="hiddenScr" style="display:none">
+<canvas id="scrCanvas" style="display:none"></canvas>
+
 <script>
 let cvReady = false;
-let refImgObj = new Image();
 let scrImgObj = new Image();
-let refLoaded = false;
 let scrLoaded = false;
+let gridCells = [];
+let currentPieces = []; // Menyimpan ID asal potongan gambar di setiap slot simulasi
+let selectedCellIndex = null; // Menyimpan sel yang sedang diklik pertama kali untuk ditukar
+let generatedSwaps = [];
 
-const refCanvas = document.getElementById('refCanvas');
 const scrCanvas = document.getElementById('scrCanvas');
-const refCtx = refCanvas.getContext('2d', {willReadFrequently: true});
 const scrCtx = scrCanvas.getContext('2d', {willReadFrequently: true});
 const logs = document.getElementById('swapLogs');
-const thumbContainer = document.getElementById('thumbContainer');
+const simGrid = document.getElementById('simGrid');
 
 function onOpenCvReady() {
     cvReady = true;
-    document.getElementById('status').innerText = "OpenCV Siap. Upload gambar (Gambar Acak Wajib).";
+    document.getElementById('status').innerText = "OpenCV Siap. Silakan upload gambar puzzle.";
     checkReady();
 }
 
-// Upload Gambar 1
-document.getElementById('refImage').addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) {
-        refImgObj.onload = () => {
-            refLoaded = true;
-            refCanvas.width = refImgObj.naturalWidth;
-            refCanvas.height = refImgObj.naturalHeight;
-            drawOverlays();
-            checkReady();
-        };
-        refImgObj.src = URL.createObjectURL(e.target.files[0]);
-    }
-});
-
-// Upload Gambar 2
 document.getElementById('scrImage').addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
         scrImgObj.onload = () => {
             scrLoaded = true;
             scrCanvas.width = scrImgObj.naturalWidth;
             scrCanvas.height = scrImgObj.naturalHeight;
-            drawOverlays();
+            scrCtx.drawImage(scrImgObj, 0, 0);
             checkReady();
         };
         scrImgObj.src = URL.createObjectURL(e.target.files[0]);
@@ -207,7 +177,7 @@ document.getElementById('scrImage').addEventListener('change', (e) => {
 function checkReady() {
     if (scrLoaded && cvReady) {
         document.getElementById('btnExtract').disabled = false;
-        document.getElementById('status').innerText = refLoaded ? "Siap diekstrak (Auto-Match Aktif)" : "Siap diekstrak (Mode Manual Aktif, Target kosong)";
+        document.getElementById('status').innerText = "Gambar siap! Klik tombol Mulai Simulasi.";
     }
 }
 
@@ -216,11 +186,8 @@ function checkReady() {
     document.getElementById(id).addEventListener('input', (e) => {
         const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
         document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
-        drawOverlays();
     });
 });
-document.getElementById('gridCols').addEventListener('change', drawOverlays);
-document.getElementById('gridRows').addEventListener('change', drawOverlays);
 
 function getGridCells(width, height) {
     const t = parseFloat(document.getElementById('marginTop').value) / 100;
@@ -237,15 +204,13 @@ function getGridCells(width, height) {
     let cells = [];
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            let cx = startX + (c * cellW) + (cellW / 2);
-            let cy = startY + (r * cellH) + (cellH / 2);
             cells.push({
                 x: Math.round(startX + (c * cellW)),
                 y: Math.round(startY + (r * cellH)),
                 w: Math.round(cellW),
                 h: Math.round(cellH),
-                cx: Math.round(cx),
-                cy: Math.round(cy),
+                cx: Math.round(startX + (c * cellW) + cellW / 2),
+                cy: Math.round(startY + (r * cellH) + cellH / 2),
                 id: (r * cols) + c
             });
         }
@@ -253,211 +218,158 @@ function getGridCells(width, height) {
     return cells;
 }
 
-function drawOverlays() {
-    if (refLoaded) _drawOnCanvas(refCanvas, refCtx, refImgObj, "rgba(0, 255, 0, 0.5)");
-    if (scrLoaded) _drawOnCanvas(scrCanvas, scrCtx, scrImgObj, "rgba(255, 0, 0, 0.5)");
-}
-
-function _drawOnCanvas(canvas, ctx, img, color) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-    const cells = getGridCells(canvas.width, canvas.height);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(2, canvas.width / 200);
-    cells.forEach(c => {
-        ctx.strokeRect(c.x, c.y, c.w, c.h);
-        ctx.fillStyle = "yellow";
-        ctx.beginPath(); ctx.arc(c.cx, c.cy, ctx.lineWidth * 2, 0, Math.PI*2); ctx.fill();
-    });
-}
-
 // ==========================================
-// TAHAP 1: EKSTRAKSI & PREVIEW THUMBNAIL
+// INISIALISASI AREA SIMULASI INTERAKTIF
 // ==========================================
 document.getElementById('btnExtract').onclick = () => {
-    document.getElementById('status').innerText = "Mengekstrak gambar...";
-    const cells = getGridCells(scrCanvas.width, scrCanvas.height);
     const cols = parseInt(document.getElementById('gridCols').value);
     const rows = parseInt(document.getElementById('gridRows').value);
     
-    document.getElementById('maxNum').innerText = (cells.length - 1);
+    gridCells = getGridCells(scrCanvas.width, scrCanvas.height);
     
-    let currentState = new Array(cells.length).fill(-1); 
+    // Inisialisasi awal: Slot i berisi potongan gambar i (berurutan)
+    currentPieces = Array.from({length: gridCells.length}, (_, i) => i);
+    selectedCellIndex = null;
 
-    // Jika Target Gambar 1 ada, lakukan Auto OpenCV
-    if (refLoaded) {
-        let refSrc = cv.imread(refCanvas);
-        let scrSrc = cv.imread(scrCanvas);
-        let refGray = new cv.Mat(), scrGray = new cv.Mat();
-        cv.cvtColor(refSrc, refGray, cv.COLOR_RGBA2GRAY);
-        cv.cvtColor(scrSrc, scrGray, cv.COLOR_RGBA2GRAY);
-
-        let refMats = [], scrMats = [];
-        cells.forEach(c => {
-            let rect = new cv.Rect(c.x + c.w * 0.2, c.y + c.h * 0.2, c.w * 0.6, c.h * 0.6);
-            let rRoi = refGray.roi(rect);
-            let sRoi = scrGray.roi(rect);
-            let rResized = new cv.Mat(); let sResized = new cv.Mat();
-            cv.resize(rRoi, rResized, new cv.Size(50, 50));
-            cv.resize(sRoi, sResized, new cv.Size(50, 50));
-            refMats.push(rResized); scrMats.push(sResized);
-            rRoi.delete(); sRoi.delete();
-        });
-
-        let scores = [];
-        for (let s = 0; s < scrMats.length; s++) {
-            for (let r = 0; r < refMats.length; r++) {
-                let diff = new cv.Mat();
-                cv.absdiff(scrMats[s], refMats[r], diff);
-                cv.threshold(diff, diff, 35, 255, cv.THRESH_BINARY);
-                scores.push({ scrIdx: s, refIdx: r, diff: cv.countNonZero(diff) });
-                diff.delete();
-            }
-        }
-        scores.sort((a, b) => a.diff - b.diff);
-
-        let usedScr = new Set();
-        let usedRef = new Set();
-        for (let i = 0; i < scores.length; i++) {
-            let match = scores[i];
-            if (!usedScr.has(match.scrIdx) && !usedRef.has(match.refIdx)) {
-                currentState[match.scrIdx] = match.refIdx;
-                usedScr.add(match.scrIdx); usedRef.add(match.refIdx);
-            }
-        }
-
-        refSrc.delete(); scrSrc.delete(); refGray.delete(); scrGray.delete();
-        refMats.forEach(m => m.delete()); scrMats.forEach(m => m.delete());
-    }
-
-    // Render Thumbnail UI
-    thumbContainer.innerHTML = '';
-    cells.forEach((c, i) => {
-        let box = document.createElement('div');
-        box.className = 'thumb-box';
-        
-        let tCanv = document.createElement('canvas');
-        tCanv.width = c.w; tCanv.height = c.h;
-        let tCtx = tCanv.getContext('2d');
-        tCtx.drawImage(scrImgObj, c.x, c.y, c.w, c.h, 0, 0, c.w, c.h);
-        
-        let lbl = document.createElement('div');
-        lbl.className = 'lbl';
-        let statusTxt = currentState[i] === -1 ? '?' : currentState[i];
-        lbl.innerHTML = `Sel ${i}<br>Tujuan: <span>${statusTxt}</span>`;
-        
-        box.appendChild(tCanv);
-        box.appendChild(lbl);
-        thumbContainer.appendChild(box);
-    });
-
-    // Generate FORMAT BARU: 0-?, 1-3, 2-15
-    let matrixStr = "";
-    for(let r=0; r<rows; r++) {
-        let rowArr = [];
-        for(let c=0; c<cols; c++) {
-            let idx = r * cols + c;
-            let val = currentState[idx];
-            let valStr = val === -1 ? "?" : val;
-            
-            // Format teks "0-?" atau "0-5" (PadStart agar lurus vertikal)
-            rowArr.push(`${idx}-${valStr}`.padStart(5, ' '));
-        }
-        matrixStr += rowArr.join(",   ") + "\n";
-    }
+    renderSimulationGrid();
     
-    // Ubah placeholder area text agar sesuai contoh
-    document.getElementById('stateArea').placeholder = "Contoh:\n0-12, 1-4, 2-9\n3-1, 4-6, 5-0";
-    document.getElementById('stateArea').value = matrixStr.trim();
-    
-    document.getElementById('matrixPanel').style.display = 'block';
-    document.getElementById('status').innerText = "Ekstrak selesai! Sesuaikan pasangan [Sel-Tujuan] di teks.";
+    document.getElementById('simulationPanel').style.display = 'block';
+    document.getElementById('status').innerText = "Simulasi aktif! Silakan klik kotak-kotak untuk merapikan posisinya ke urutan yang benar.";
 };
 
+function renderSimulationGrid() {
+    const cols = parseInt(document.getElementById('gridCols').value);
+    simGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    simGrid.innerHTML = '';
+
+    currentPieces.forEach((pieceOriginalId, slotIndex) => {
+        let cellDiv = document.createElement('div');
+        cellDiv.className = 'sim-cell';
+        if (selectedCellIndex === slotIndex) cellDiv.classList.add('selected');
+        
+        cellDiv.onclick = () => handleCellClick(slotIndex);
+
+        // Label nomor slot
+        let badge = document.createElement('div');
+        badge.className = 'cell-idx';
+        badge.innerText = `Sel ${slotIndex} (Isi:${pieceOriginalId})`;
+
+        // Potong gambar asli menggunakan Canvas kecil sesuai potongan aslinya di grid
+        let targetCellCoords = gridCells[pieceOriginalId];
+        let miniCanvas = document.createElement('canvas');
+        miniCanvas.width = targetCellCoords.w;
+        miniCanvas.height = targetCellCoords.h;
+        let mCtx = miniCanvas.getContext('2d');
+        
+        mCtx.drawImage(
+            scrCanvas, 
+            targetCellCoords.x, targetCellCoords.y, targetCellCoords.w, targetCellCoords.h, 
+            0, 0, targetCellCoords.w, targetCellCoords.h
+        );
+
+        cellDiv.appendChild(badge);
+        cellDiv.appendChild(miniCanvas);
+        simGrid.appendChild(cellDiv);
+    });
+
+    updateTextareaState();
+}
+
+// Mekanisme Klik & Tukar (Swap) di Simulasi Visual
+function handleCellClick(slotIndex) {
+    if (selectedCellIndex === null) {
+        // Pilih kotak pertama
+        selectedCellIndex = slotIndex;
+    } else {
+        // Pilih kotak kedua, lakukan penukaran (Swap) isi potongan gambar
+        let temp = currentPieces[selectedCellIndex];
+        currentPieces[selectedCellIndex] = currentPieces[slotIndex];
+        currentPieces[slotIndex] = temp;
+        
+        selectedCellIndex = null; // Reset pilihan
+    }
+    renderSimulationGrid();
+}
+
+// Memperbarui Textarea secara otomatis berdasarkan posisi terkini di Simulasi
+function updateTextareaState() {
+    // currentPieces berisi [isi_di_sel_0, isi_di_sel_1, ...]
+    // Kita ubah ke format "Sel - Tujuan" yang diinginkan
+    let pairs = [];
+    for(let i=0; i<currentPieces.length; i++) {
+        pairs.push(`${i}-${currentPieces[i]}`);
+    }
+    document.getElementById('stateArea').value = pairs.join(", ");
+}
+
 // ==========================================
-// TAHAP 2: CYCLE SORT & DOWNLOAD JSON
+// TAHAP PROSES SWIPE & DOWNLOAD JSON
 // ==========================================
 document.getElementById('btnSolve').onclick = () => {
     let stateText = document.getElementById('stateArea').value;
-    const cells = getGridCells(scrCanvas.width, scrCanvas.height);
+    let state = new Array(gridCells.length).fill(-1);
     
-    // Siapkan array kosong untuk menerima identitas
-    let state = new Array(cells.length).fill(-1);
-    
-    // Regex canggih: Mencari pola angka diikuti tanda hubung/sama_dengan/titik_dua lalu angka lagi
-    // Contoh yang terdeteksi: 0-2, 1=5, 2: 12, 3 - 4
-    let regex = /(\d+)\s*[-=:]\s*(\d+|\?)/g;
+    let regex = /(\d+)\s*[-=:]\s*(\d+)/g;
     let match;
-    let pairCount = 0;
+    let count = 0;
     
     while ((match = regex.exec(stateText)) !== null) {
         let cellIdx = parseInt(match[1]);
-        let targetIdx = match[2];
-        
-        if (targetIdx === '?') {
-            return alert(`Error: Masih ada sel yang bernilai "?" (Sel ${cellIdx}). Harap isi dengan angka tujuan secara manual.`);
-        }
-        targetIdx = parseInt(targetIdx);
-
-        if (cellIdx >= 0 && cellIdx < cells.length) {
+        let targetIdx = parseInt(match[2]);
+        if (cellIdx >= 0 && cellIdx < gridCells.length) {
             state[cellIdx] = targetIdx;
-            pairCount++;
+            count++;
         }
     }
 
-    // Validasi
-    if (pairCount !== cells.length) {
-        return alert(`Error: Terdeteksi ${pairCount} pasangan, padahal seharusnya ada ${cells.length} kotak grid. Pastikan format teks adalah "Sel-Tujuan" (Cth: 0-5, 1-12).`);
-    }
-    if (state.includes(-1)) {
-        return alert("Error: Ada sel yang terlewat (nilainya -1). Periksa kembali angka Anda.");
-    }
-    let uniqueSet = new Set(state);
-    if (uniqueSet.size !== state.length) {
-        return alert("Error: Ada angka tujuan yang ganda/bentrok. Setiap sel harus punya tujuan yang unik (0 hingga " + (cells.length-1) + ").");
+    if (count !== gridCells.length || state.includes(-1)) {
+        return alert("Format teks salah atau ada sel yang terlewat. Pastikan semua slot terisi format 'Sel-Isi'.");
     }
 
-    // Eksekusi Pemecahan
     logs.innerHTML = ''; logs.style.display = 'block';
-    let generatedSwaps = [];
+    generatedSwaps = [];
+    let workState = [...state];
     let stepCount = 1;
 
-    for (let i = 0; i < state.length; i++) {
-        while (state[i] !== i) {
-            let correctPos = state[i]; 
-            let targetContent = state[correctPos]; 
+    // Algoritma Cycle Sort
+    for (let i = 0; i < workState.length; i++) {
+        while (workState[i] !== i) {
+            let correctPos = workState[i]; 
+            let targetContent = workState[correctPos]; 
 
             generatedSwaps.push({ from: i, to: correctPos });
-            
-            logMsg(`Step ${stepCount}: Swipe Isi Sel ${i} ➔ Ke Sel ${correctPos}`);
-            logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Efek: Isi dari Sel ${correctPos} terlempar balik ke Sel ${i}</i>`);
+            logMsg(`Step ${stepCount}: Swipe dari Sel ${i} ➔ Sel ${correctPos}`);
+            logMsg(`&nbsp;&nbsp;&nbsp;↳ <i>Efek: Konten ${targetContent} terlempar ke Sel ${i}</i>`);
             stepCount++;
             
-            let temp = state[i];
-            state[i] = state[correctPos];
-            state[correctPos] = temp;
+            let temp = workState[i];
+            workState[i] = workState[correctPos];
+            workState[correctPos] = temp;
         }
     }
 
     if (generatedSwaps.length === 0) {
-        logMsg("Puzzle sudah tersusun dengan benar!");
-        return;
+        logMsg("Puzzle sudah tersusun dengan sempurna! Tidak ada langkah yang diperlukan.");
+        document.getElementById('btnDownload').style.display = 'none';
+    } else {
+        logMsg(`<br><b>[SELESAI] Total langkah penukaran: ${generatedSwaps.length}</b>`);
+        document.getElementById('btnDownload').style.display = 'block';
     }
-    
-    logMsg(`<br><b>[SELESAI] Total langkah: ${generatedSwaps.length}</b>`);
-    generateJSON(generatedSwaps, cells);
+    document.getElementById('status').innerText = "Perhitungan jalur selesai! Silakan download JSON.";
 };
 
-// Fungsi Output JSON (Sama seperti sebelumnya)
-function generateJSON(swaps, cells) {
+// Download JSON KeyMapper
+document.getElementById('btnDownload').onclick = () => {
+    if (generatedSwaps.length === 0) return;
+
     const targetW = parseFloat(document.getElementById('screenWidth').value) || 1260;
     const targetH = parseFloat(document.getElementById('screenHeight').value) || 2800;
     const scaleX = targetW / scrCanvas.width;
     const scaleY = targetH / scrCanvas.height;
 
-    const actionList = swaps.map((swap) => {
-        let startCell = cells[swap.from];
-        let endCell = cells[swap.to];
+    const actionList = generatedSwaps.map((swap) => {
+        let startCell = gridCells[swap.from];
+        let endCell = gridCells[swap.to];
 
         let startX = Math.round(startCell.cx * scaleX);
         let startY = Math.round(startCell.cy * scaleY);
@@ -506,7 +418,7 @@ function generateJSON(swaps, cells) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
+};
 
 function logMsg(msg) {
     logs.innerHTML += `<div>${msg}</div>`;
