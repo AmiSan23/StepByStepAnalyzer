@@ -139,6 +139,11 @@
             </div>
         </div>
         <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">*JSON will be automatically converted from base 1260x2800 to this resolution.</p>
+        <div style="margin-top: 10px;">
+            <label style="font-size: 0.7rem; font-weight: bold; color: #666;">TAP DELAY (ms)</label>
+            <input type="number" id="tapDelay" value="114" min="0" step="1" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+            <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">*Delay before next action for each tap in the JSON (default 114).</p>
+        </div>
         <div>
             <span class="slider-title">Custom Tap Coordinates</span>
             <textarea id="customCoords" rows="8" style="font-family: monospace; font-size: 0.75rem; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="170,845
@@ -240,6 +245,7 @@ function saveSliderSettings() {
         side: document.getElementById('marginSide').value,
         resW: document.getElementById('screenWidth').value,
         resH: document.getElementById('screenHeight').value,
+        delay: document.getElementById('tapDelay').value,
         coords: document.getElementById('customCoords').value
     };
     localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
@@ -254,6 +260,7 @@ function loadSliderSettings() {
         if (settings.side) document.getElementById('marginSide').value = settings.side;
         if (settings.resW) document.getElementById('screenWidth').value = settings.resW;
         if (settings.resH) document.getElementById('screenHeight').value = settings.resH;
+        if (settings.delay !== undefined && settings.delay !== '') document.getElementById('tapDelay').value = settings.delay;
         
         // Load Koordinat, jika tidak ada pakai default
         document.getElementById('customCoords').value = settings.coords || DEFAULT_COORDS_TEXT;
@@ -561,6 +568,7 @@ document.getElementById('processBtn').onclick = async () => {
 };
 document.getElementById('screenWidth').addEventListener('input', saveSliderSettings);
 document.getElementById('screenHeight').addEventListener('input', saveSliderSettings);
+document.getElementById('tapDelay').addEventListener('input', saveSliderSettings);
 // Download logic unchanged
 document.getElementById('btnDownload').onclick = () => {
   const steps = zones.filter(z => z.locked).sort((a, b) => a.step - b.step);
@@ -570,6 +578,8 @@ document.getElementById('btnDownload').onclick = () => {
     // Hitung Rasio (Base adalah 1260x2800)
     //const ratioX = targetW / 1260;
     //const ratioY = targetH / 2800;
+    const tapDelay = Math.max(0, parseInt(document.getElementById('tapDelay').value));
+    const delayValue = isNaN(tapDelay) ? 114 : tapDelay;
     const ratioX = 1;
     const ratioY = 1;
 
@@ -582,7 +592,7 @@ document.getElementById('btnDownload').onclick = () => {
             "data": `${finalX},${finalY}`, // Koordinat yang sudah dikonversi
             "extras": [
                 { "data": String(s.step), "id": "extra_coordinate_description" },
-                { "data": 114, "id": "extra_delay_before_next_action" }
+                { "data": delayValue, "id": "extra_delay_before_next_action" }
             ],
             "flags": 0,
             "type": "TAP_COORDINATE",
